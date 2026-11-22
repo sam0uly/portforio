@@ -1,0 +1,33 @@
+# Alaa El-Samouly (Samouly)
+
+> Official portfolio of Alaa El-Samouly (also known as Samouly, sam0uly, Dev Alaa, Dev Samouly, and Software Engineer Samouly), an Egyptian software engineer at Charm specializing in Go terminal user interfaces (TUIs), developer CLI tooling, NixOS/Linux desktop systems, and modern web engineering.
+
+## Identity
+
+- **Full Name**: Alaa El-Samouly
+- **Handles / Aliases**: Samouly, sam0uly, Dev Alaa, Dev Samouly, Software Engineer Samouly
+- **Role**: Software Engineer at [Charm](https://charm.land)
+- **Location**: Egypt
+- **Primary Languages & Stack**: Go, Bubble Tea, Lip Gloss, Elm, WebGL, Nuxt, Vue, TypeScript, Tailwind CSS, NixOS, Hyprland, Lua (Neovim)
+
+## Selected Projects
+
+- [Twig](https://github.com/sam0uly/twig): Live diff viewer for working trees bigger than your screen (Go, currently building)
+- [mural](https://github.com/sam0uly/mural): Terminal wallpaper manager with a built-in pure Go Wayland daemon (Go, TUI)
+- [Spin](https://spincli.pages.dev): Language-agnostic CLI for generating and sharing reusable project templates (Go)
+- [bubbleMonitor](https://github.com/sam0uly/bubbleMonitor): Terminal system monitor built with Bubble Tea (Go, TUI)
+- [Mditor](https://github.com/sam0uly/mditor): Terminal markdown editor on Charm libraries (Go, Charm)
+- [HyprLuna](https://github.com/Lunaris-Project/HyprLuna): Arch Linux desktop shell for Hyprland and Ags widgets
+- [Samouly Flake](https://github.com/sam0uly/samouly-flake): Declarative NixOS configuration for Hyprland and Niri compositors
+- [SamoulyVim](https://github.com/sam0uly/SamoulyVim): Personal Neovim configuration written in Lua
+
+## Links & Contact
+
+- [Portfolio](https://portforio.samouly.fun/)
+- [Full AI Context](https://portforio.samouly.fun/llms-full.txt)
+- [Main Site](https://samouly.fun/)
+- [GitHub](https://github.com/sam0uly)
+- [X (Twitter)](https://x.com/sam0uly)
+- [Blog](https://samouly.fun/blog)
+- [Charm](https://charm.land)
+- [Email](mailto:alasamouly@gmail.com)
