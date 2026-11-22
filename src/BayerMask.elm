@@ -236,28 +236,28 @@ shadowStyle maybeShadow =
                     "rgba(" ++ String.fromInt r ++ ", " ++ String.fromInt g ++ ", " ++ String.fromInt b ++ ", "
 
                 topY =
-                    -12 * sizeScale
+                    lerp -10 -12 lightMix * sizeScale
 
                 topBlur =
-                    lerp 48 40 lightMix * sizeScale
+                    lerp 38 40 lightMix * sizeScale
 
                 topSpread =
                     -12 * sizeScale
 
                 topAlpha =
-                    lerp 0.72 0.12 lightMix * (1 - 0.35 * dip)
+                    lerp 0.68 0.12 lightMix * (1 - 0.35 * dip)
 
                 botY =
-                    24 * sizeScale
+                    lerp 18 24 lightMix * sizeScale
 
                 botBlur =
-                    lerp 80 64 lightMix * sizeScale
+                    lerp 65 64 lightMix * sizeScale
 
                 botSpread =
                     -16 * sizeScale
 
                 botAlpha =
-                    lerp 0.9 0.16 lightMix * (1 - 0.35 * dip)
+                    lerp 0.85 0.16 lightMix * (1 - 0.35 * dip)
 
                 value =
                     "0 -1px 0 0 rgba(255, 255, 255, "
