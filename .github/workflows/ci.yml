@@ -52,7 +52,8 @@ jobs:
         run: |
           for file in \
             dist/index.html \
-            dist/og-image.png \
+            dist/favicon.ico \
+            dist/og-image.jpg \
             dist/robots.txt \
             dist/sitemap.xml \
             dist/llms.txt \
