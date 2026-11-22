@@ -19,8 +19,7 @@ type Phase
     = Idle
     | IntroReveal Float
     | ThemeOut Float Theme Theme
-    | ThemeMorph Float Theme Theme
-    | ThemeIn Float Theme
+    | ThemeIn Float Theme Theme
 
 
 type alias ShadowAnim =
@@ -43,22 +42,17 @@ introDurationMs =
 
 outMs : Float
 outMs =
-    340
-
-
-morphMs : Float
-morphMs =
-    320
+    310
 
 
 inMs : Float
 inMs =
-    380
+    350
 
 
 shadowMs : Float
 shadowMs =
-    1160
+    840
 
 
 init : Bool -> Model
@@ -137,7 +131,7 @@ tick dtMs model =
                     elapsed + min 50 dtMs
             in
             if next >= outMs then
-                ( { model | phase = ThemeMorph 0 fromTheme targetTheme, shadow = nextShadow }
+                ( { model | phase = ThemeIn 0 fromTheme targetTheme, shadow = nextShadow }
                 , Just targetTheme
                 )
 
@@ -146,18 +140,7 @@ tick dtMs model =
                 , Nothing
                 )
 
-        ThemeMorph elapsed fromTheme targetTheme ->
-            let
-                next =
-                    elapsed + min 50 dtMs
-            in
-            if next >= morphMs then
-                ( { model | phase = ThemeIn 0 targetTheme, shadow = nextShadow }, Nothing )
-
-            else
-                ( { model | phase = ThemeMorph next fromTheme targetTheme, shadow = nextShadow }, Nothing )
-
-        ThemeIn elapsed targetTheme ->
+        ThemeIn elapsed fromTheme targetTheme ->
             let
                 next =
                     elapsed + min 50 dtMs
@@ -166,7 +149,7 @@ tick dtMs model =
                 ( { model | phase = Idle, shadow = nextShadow }, Nothing )
 
             else
-                ( { model | phase = ThemeIn next targetTheme, shadow = nextShadow }, Nothing )
+                ( { model | phase = ThemeIn next fromTheme targetTheme, shadow = nextShadow }, Nothing )
 
 
 currentBgLight : Theme -> Model -> Float
@@ -178,27 +161,25 @@ currentBgLight currentTheme model =
         IntroReveal _ ->
             Theme.isLightFloat currentTheme
 
-        ThemeOut _ fromTheme _ ->
-            Theme.isLightFloat fromTheme
-
-        ThemeMorph elapsed fromTheme targetTheme ->
+        ThemeOut elapsed fromTheme targetTheme ->
             let
                 t =
-                    clamp 0 1 (elapsed / morphMs)
+                    clamp 0 1 (((elapsed / outMs) - 0.5) / 0.5)
 
                 eased =
-                    t * t * (3 - 2 * t)
-
-                a =
-                    Theme.isLightFloat fromTheme
-
-                b =
-                    Theme.isLightFloat targetTheme
+                    t * t * (3 - 2 * t) * 0.5
             in
-            a + (b - a) * eased
+            lerp (Theme.isLightFloat fromTheme) (Theme.isLightFloat targetTheme) eased
 
-        ThemeIn _ targetTheme ->
-            Theme.isLightFloat targetTheme
+        ThemeIn elapsed fromTheme targetTheme ->
+            let
+                t =
+                    clamp 0 1 ((elapsed / inMs) / 0.5)
+
+                eased =
+                    0.5 + (t * t * (3 - 2 * t)) * 0.5
+            in
+            lerp (Theme.isLightFloat fromTheme) (Theme.isLightFloat targetTheme) eased
 
 
 lerp : Float -> Float -> Float -> Float
@@ -350,7 +331,7 @@ viewOverlay currentTheme model =
             in
             renderShader (Theme.isLightFloat currentTheme) t 1.0
 
-        ThemeOut elapsed fromTheme _ ->
+        ThemeOut elapsed _ _ ->
             let
                 t =
                     clamp 0 1 (elapsed / outMs)
@@ -358,13 +339,9 @@ viewOverlay currentTheme model =
                 eased =
                     t * t * (3 - 2 * t)
             in
-            renderShader (Theme.isLightFloat fromTheme) eased 0.0
+            renderShader (currentBgLight currentTheme model) eased 0.0
 
-        ThemeMorph _ _ _ ->
-            -- Content is 100% covered while both overlay & sheet glide smoothly in lockstep (zero dither on bg, zero flicker!)
-            renderShader (currentBgLight currentTheme model) 1.0 0.0
-
-        ThemeIn elapsed targetTheme ->
+        ThemeIn elapsed _ _ ->
             let
                 t =
                     clamp 0 1 (elapsed / inMs)
@@ -372,7 +349,7 @@ viewOverlay currentTheme model =
                 eased =
                     t * t * (3 - 2 * t)
             in
-            renderShader (Theme.isLightFloat targetTheme) (1 - eased) 0.0
+            renderShader (currentBgLight currentTheme model) (1 - eased) 0.0
 
 
 renderShader : Float -> Float -> Float -> Html msg
