@@ -817,7 +817,7 @@ viewDesktopTocWing config isOpen bgStyle tintStyle overlayHtml model maybeSlug =
         )
         [ invertedCornerTop
         , invertedCornerBottom
-        , div [ Attr.class "relative isolate flex-1 min-h-0 flex flex-col" ]
+        , div [ Attr.class "relative isolate flex-1 min-h-0 flex flex-col toc-wing-squircle" ]
             [ case maybePost of
                 Nothing ->
                     Html.text ""
