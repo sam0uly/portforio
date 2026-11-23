@@ -5,6 +5,7 @@ import { copyFileSync, existsSync, readFileSync, unlinkSync, mkdtempSync } from 
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { buildBlogPosts } from './scripts/buildBlogPosts.mjs';
+import { generateSeoFiles } from './scripts/generateSeo.mjs';
 
 function elmPlugin() {
   let isProduction = false;
@@ -78,6 +79,9 @@ function blogPostsPlugin() {
 
   return {
     name: 'vite-plugin-blog-posts',
+    buildStart() {
+      generateSeoFiles(process.cwd());
+    },
     resolveId(id) {
       if (id === virtualId) return resolvedVirtualId;
       return null;

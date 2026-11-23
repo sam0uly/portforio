@@ -35,3 +35,5 @@ User-agent: Applebot-Extended
 Allow: /
 
 Sitemap: https://portforio.samouly.fun/sitemap.xml
+# LLMs context: https://portforio.samouly.fun/llms.txt
+# LLMs full context: https://portforio.samouly.fun/llms-full.txt

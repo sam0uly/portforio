@@ -144,7 +144,7 @@
               "https://samouly.fun/",
               "https://github.com/sam0uly",
               "https://x.com/sam0uly",
-              "https://samouly.fun/blog",
+              "https://portforio.samouly.fun/blog",
               "https://charm.land"
             ],
             "knowsAbout": [
@@ -268,6 +268,41 @@
                 "author": { "@id": "https://portforio.samouly.fun/#person" }
               }
             ]
+          },
+          {
+            "@type": "Blog",
+            "@id": "https://portforio.samouly.fun/blog#blog",
+            "url": "https://portforio.samouly.fun/blog",
+            "name": "Writing | Alaa El-Samouly (Samouly)",
+            "description": "Technical articles by Alaa El-Samouly on Go, Linux distributions, NixOS, and developer tooling.",
+            "author": { "@id": "https://portforio.samouly.fun/#person" },
+            "publisher": { "@id": "https://portforio.samouly.fun/#person" },
+            "blogPost": [
+              {
+                "@type": "BlogPosting",
+                "headline": "Start Being a Gopher",
+                "url": "https://portforio.samouly.fun/blog/getting-started-with-go",
+                "datePublished": "2026-03-24",
+                "description": "A simple, practical guide to installing Go and writing your first real program without wasting time.",
+                "author": { "@id": "https://portforio.samouly.fun/#person" }
+              },
+              {
+                "@type": "BlogPosting",
+                "headline": "How to Actually Choose a Linux Distro (Without Losing Your Mind)",
+                "url": "https://portforio.samouly.fun/blog/choosing-linux-distro",
+                "datePublished": "2026-01-11",
+                "description": "Switching from Windows? Distro-hopping for the 10th time? A practical guide to picking a Linux distro that actually fits your needs.",
+                "author": { "@id": "https://portforio.samouly.fun/#person" }
+              },
+              {
+                "@type": "BlogPosting",
+                "headline": "Why NixOS and Nix, is it just hype?",
+                "url": "https://portforio.samouly.fun/blog/why-nix",
+                "datePublished": "2026-01-09",
+                "description": "How Nix and NixOS solve dependency hell with declarative configuration and reproducible builds.",
+                "author": { "@id": "https://portforio.samouly.fun/#person" }
+              }
+            ]
           }
         ]
       }
@@ -324,6 +359,24 @@
             </li>
           </ul>
         </section>
+        <section id="blog">
+          <h2>Writing</h2>
+          <ul>
+            <li>
+              <a href="/blog/getting-started-with-go">Start Being a Gopher</a> (2026-03-24): A
+              simple, practical guide to installing Go and writing your first real program.
+            </li>
+            <li>
+              <a href="/blog/choosing-linux-distro">How to Actually Choose a Linux Distro</a>
+              (2026-01-11): A practical guide to picking a Linux distro that fits your needs.
+            </li>
+            <li>
+              <a href="/blog/why-nix">Why NixOS and Nix, is it just hype?</a> (2026-01-09): How
+              Nix and NixOS solve dependency hell with declarative configuration and reproducible
+              builds.
+            </li>
+          </ul>
+        </section>
         <section id="contact">
           <h2>Contact</h2>
           <p>
@@ -331,7 +384,7 @@
             <a href="mailto:alasamouly@gmail.com">alasamouly@gmail.com</a>,
             <a href="https://github.com/sam0uly">GitHub</a>,
             <a href="https://x.com/sam0uly">X</a>,
-            <a href="https://samouly.fun/blog">Blog</a>,
+            <a href="/blog">Blog</a>,
             <a href="https://charm.land">Charm</a>.
           </p>
         </section>

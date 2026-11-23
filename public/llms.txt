@@ -1,6 +1,6 @@
 # Alaa El-Samouly (Samouly)
 
-> Official portfolio of Alaa El-Samouly (also known as Samouly, sam0uly, Dev Alaa, Dev Samouly, and Software Engineer Samouly), an Egyptian software engineer at Charm specializing in Go terminal user interfaces (TUIs), developer CLI tooling, NixOS/Linux desktop systems, and modern web engineering.
+> Official portfolio and technical blog of Alaa El-Samouly (also known as Samouly, sam0uly, Dev Alaa, Dev Samouly, and Software Engineer Samouly), an Egyptian software engineer at Charm specializing in Go terminal user interfaces (TUIs), developer CLI tooling, NixOS/Linux desktop systems, and modern web engineering.
 
 ## Identity
 
@@ -21,13 +21,19 @@
 - [Samouly Flake](https://github.com/sam0uly/samouly-flake): Declarative NixOS configuration for Hyprland and Niri compositors
 - [SamoulyVim](https://github.com/sam0uly/SamoulyVim): Personal Neovim configuration written in Lua
 
+## Blog Articles
+
+- [Start Being a Gopher](https://portforio.samouly.fun/blog/getting-started-with-go) (2026-03-24): A practical, no-BS guide to starting with Go with real commands, real code and zero tutorial hell.
+- [How to Actually Choose a Linux Distro (Without Losing Your Mind)](https://portforio.samouly.fun/blog/choosing-linux-distro) (2026-01-11): Switching from Windows? Distro-hopping for the 10th time? Here is a no-BS guide to picking a Linux distro that actually fits your needs, not what Reddit told you is "the best.
+- [Why NixOS and Nix, is it just hype?](https://portforio.samouly.fun/blog/why-nix) (2026-01-09): Tired of 'it works on my machine'? Discover how Nix and NixOS solve dependency hell with declarative configuration and reproducible builds. Docker meets Infrastructure as Code - but is it revolutionary or just hype?
+
 ## Links & Contact
 
 - [Portfolio](https://portforio.samouly.fun/)
-- [Full AI Context](https://portforio.samouly.fun/llms-full.txt)
+- [Blog](https://portforio.samouly.fun/blog)
+- [Full AI Context (includes complete blog articles)](https://portforio.samouly.fun/llms-full.txt)
 - [Main Site](https://samouly.fun/)
 - [GitHub](https://github.com/sam0uly)
 - [X (Twitter)](https://x.com/sam0uly)
-- [Blog](https://samouly.fun/blog)
 - [Charm](https://charm.land)
 - [Email](mailto:alasamouly@gmail.com)

@@ -1,4 +1,4 @@
-# Alaa El-Samouly (Samouly) - Complete Profile & Technical Dossier
+# Alaa El-Samouly (Samouly) - Complete Profile, Projects & Blog Articles
 
 ## Summary
 
@@ -57,12 +57,1645 @@ Alaa El-Samouly (commonly searched as **Samouly**, **sam0uly**, **Alaa**, **Dev 
 - **Stack**: Lua, Neovim
 - **Description**: Personal Neovim configuration written in Lua.
 
+## Blog Articles (Full Text)
+
+### Start Being a Gopher
+
+- **URL**: https://portforio.samouly.fun/blog/getting-started-with-go
+- **Date**: 2026-03-24
+- **Tags**: golang, programming, backend, CLI/TUI, programming languages
+- **Summary**: A practical, no-BS guide to starting with Go with real commands, real code and zero tutorial hell.
+
+## Introduction
+
+> Is Go worth learning?
+
+Wrong question.
+
+The better one is:
+
+**"Do I need Go for what I'm trying to build right now?"**
+
+Because what usually happens is simple: you watch tutorials, compare Go vs Rust
+vs Node, save 20 tabs… and write nothing.
+
+This post is not about convincing you. It's about getting you started fast,
+practical, and without wasting time.
+
+## What Go Is Actually Good At
+
+Go is built for:
+
+- APIs and backend services
+- CLI/TUI tools (tbh here this is one of the most beautiful things)
+- networking / distributed systems
+
+If that is what you are building keep reading. If not maybe you dont need Go.
+
+---
+
+## Install Go (Do This First Not Later)
+
+Don't skip this part.
+
+## Install for Linux Distros. (come to me linux mate)
+
+### Arch Linux / CachyOS / EndeavourOS
+
+```bash
+sudo pacman -S go
+```
+
+### Fedora
+
+```bash
+sudo dnf install golang
+```
+
+### openSUSE (Tumbleweed / Leap)
+
+```bash
+sudo zypper install go
+```
+
+### Debian / Ubuntu
+
+```bash
+sudo apt update
+sudo apt install golang
+```
+
+### or cross-distro installation
+
+if you want the latest version always this is a hacky command i made to install
+the latest version:
+
+```bash
+GO_TAR=$(curl -s https://go.dev/VERSION?m=text | head -n 1).linux-amd64.tar.gz
+wget https://go.dev/dl/$GO_TAR
+sudo rm -rf /usr/local/go
+sudo tar -C /usr/local -xzf $GO_TAR
+rm -rf $GO_TAR
+```
+
+then Add `Go bin` to the path:
+
+```bash
+export PATH=$PATH:/usr/local/go/bin
+```
+
+and if you want it always available:
+
+```bash
+# this command adds Go to PATH (compiler + installed tools)
+# also you should use bash shell, if not just Ask ai to give you the command XD
+echo 'export PATH=$PATH:/usr/local/go/bin:$(go env GOPATH)/bin' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### macOS
+
+Using Homebrew:
+
+```bash
+brew install go
+```
+
+### Windows
+
+Download installer from: **https://go.dev/dl/**
+
+Run it. Done.
+
+### Verify Installation
+
+```bash
+go version
+```
+
+If it prints a version, you're good.
+
+---
+
+## Some resources for my beloved reader
+
+Go have a good and well documented resources, but the official one sometimes feels distructing for the new gophers.
+so let me give you how to learn from the official docs and unofficial resources.
+
+### The Go.dev
+
+first you have 3 ways in go.dev to learn:
+
+1. A Tour Of Go
+
+- go have great interactive tutorial named ["A Tour Of Go"](https://go.dev/tour/) you can finish all Go basics and concepts on it.
+
+> like what they said: An interactive introduction to Go in four sections. The first section covers basic syntax and data structures; the second discusses methods and interfaces; the third is about Generics; and the fourth introduces Go's concurrency primitives. Each section concludes with a few exercises so you can practice what you've learned.
+
+> **NOTE**:
+You can take the [tour online](https://go.dev/tour/). or install it locally with `go install golang.org/x/website/tour@latest`
+
+2. Go tutorial
+
+- this is a Step by step guides for specific tasks, such as getting started with modules, creating multi-module workspaces, or accessing a database. after you finish the tour of go one you can start with it. (i did that)
+- you can access it [here](https://go.dev/doc/tutorial/).
+
+3. Effective Go
+
+- After grasping the language basics, this document helps you understand how to write clear and idiomatic Go code (like yeah the "Go way").
+- you can access it [here](https://go.dev/doc/effective_go).
+- Its a bunch of sections on one page but you will be satisfied with it XD
+
+> **TIP**:
+you will not be comfortable with go and will not like it if you didnt learned how to write clear and idiomatic go code and same if you fight its opinions.
+
+After that i guess you will beat me in Go (you can't though, tbh XD)
+
+### The Go.community
+
+Go community is very good and helpful and creates alot of OSS projects while keeping it well documented such as [charmTM](https://charm.land) i love this team and their community, they helped me alot about go and even with positive energy XD, and some other made a good resources for golang such like:
+
+- [Go By Example](https://gobyexample.com/): is a hands-on introduction to Go using annotated example programs.
+- [Exercism for Gophers](https://exercism.org/tracks/go): its a good course for those who likes the video learning way (i dont like it but others may do) it have "164 exercises grouped into 34 Go Concepts, with automatic analysis of your code and personal mentoring, all 100% free." — by them.
+- [Awesome Go](https://awesome-go.com/): A curated list of awesome Go frameworks, libraries, and software. Inspired by awesome-python.
+- [Learn X in Y minutes](https://learnxinyminutes.com/go): Where X=Go XDD.
+- [Go101](https://go101.org/): (an up-to-date knowledge base for Go programming self learning).
+- [Another go by example](https://www.mintlify.com/mmcgrana/gobyexample): A beautiful and modern docs-like go by example and have Ask-ai feature.
+- [Learn Go with tests](https://quii.gitbook.io/learn-go-with-tests): a good resource to learn test-driven development with Go and it have Go fundamentals section.
+
+### The Go.books
+
+Seeeeeigh there is alot here but i will put books libraries:
+
+- [The Go Programming Language](http://www.cs.uniroma2.it/upload/2017/TSC/The%20Go%20Programming%20Language.pdf): this is like the official book but its not, and its very good.
+- [Awesome Go books](https://github.com/dariubs/GoBooks): GoBooks is a curated collection of the best Go books for developers at every level—from beginners to engineers working on concurrency, performance, and system design. One place to find the right learning resource.
+- [Go Wiki books](https://go.dev/wiki/Books): the official list of books by `go.dev`.
+
+## Your First Go Program
+
+Create a file:
+
+```bash
+mkdir hello-go && cd hello-go
+touch main.go
+```
+
+Put this inside:
+
+```go [hello.go]
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("hello from Samouly, gopher!")
+}
+```
+
+Run it:
+
+```bash
+go run main.go
+```
+
+## Manage Your Project (The `go mod` way)
+
+Forget the old `GOPATH` nightmare. In modern Go, every project needs a
+**Module**. It’s like a `package.json` for Go. It tells the compiler (and your
+LSP) where the dependencies are.
+
+In your project folder, run:
+
+```bash
+go mod init my-awesome-project
+```
+
+This creates a `go.mod` file. From this moment:
+
+- Your **LSP** will actually work.
+- You can import local packages.
+- You can add external libraries using `go get`.
+
+> **WARNING**:
+If you don't run `go mod init`, you are basically coding in a notepad without any "intelligence" from your tools. Dont be that person.
+
+## Build a Binary (Where Go Shines XD)
+
+```bash
+go build
+./hello-go
+```
+
+> **TIP**:
+Binary Naming If you run go build **(without specifying a file)**, Go will name the binary after your directory. If you build a specific file like `go build main.go` it will be named `main`.
+
+Now you have a standalone binary. No runtime. No dependencies. Just run it.
+
+---
+
+## The Only Concepts You Need to Start
+
+Don't try to learn everything. Focus on these:
+
+### 1. Packages
+
+Everything in Go is a package. Think of it like folders in your file system
+every file belongs to a package, and that's how Go organizes code.
+
+```go
+import "fmt"
+```
+
+Here `fmt` is the standard formatting package. You use it for printing to
+console, formatting strings, all that basics. There's hundreds in the standard
+library, but you only need a handful to start.
+
+::card{icon="i-simple-icons-go" title="The package rule"}
+Every Go file MUST start
+with a package declaration. For executables, use `package main`. For libraries,
+use whatever name fits like `package utils` or `package models`.
+
+### 2. Functions
+
+Functions in Go are straightforward. You define what goes in, what comes out.
+
+```go
+func add(a int, b int) int {
+    return a + b
+}
+```
+
+That's it. No magic, no decorators, no weird syntax.
+
+#### Function Types
+
+Go dont have overloading, but you have some main patterns worth knowing:
+
+##### **1. Multiple return values**
+
+This is huge in Go. Functions can return both a value AND an error. This is how
+Go handles errors you see it everywhere.
+
+```go
+func divide(a, b float64) (float64, error) {
+    if b == 0 {
+        return 0, fmt.Errorf("division by zero")
+    }
+    return a / b, nil
+}
+```
+
+The `error` type is Go's built-in way to handle failures. If something goes
+wrong, you get an error object. If it worked, you get `nil`. Get used to
+checking this pattern it's everywhere in Go code.
+
+---
+
+**2. Named return values**
+
+Go lets you name what you're returning. It's useful when you want to set it
+early and return later without specifying.
+
+```go
+func rectangle(width, height int) (area int) {
+    area = width * height
+    return
+}
+```
+
+You don't have to say `return area` Go knows because you named it. Some people
+love this, some hate it. I use it when the function is long and setting the
+return value early makes the code clearer.
+
+---
+
+**3. Variadic functions**
+
+These accept any number of arguments. The `...` syntax is the magic.
+
+```go
+func sum(nums ...int) int {
+    total := 0
+    for _, n := range nums {
+        total += n
+    }
+    return total
+}
+```
+
+You can call it with `sum(1, 2, 3)` or `sum(1, 2, 3, 4, 5)` any amount. Super
+useful for things like logging, building queries, anywhere you might need
+flexible arguments.
+
+---
+
+**4. Anonymous functions**
+
+Functions don't need a name. You can define them inline and even call them
+immediately.
+
+```go
+func main() {
+    result := func(a int, b int) int {
+        return a + b
+    }(2, 3)
+
+    fmt.Println(result)
+}
+```
+
+This prints `5`. The function is defined and then called right away with `2, 3`.
+Not something you do every day, but useful for quick logic or closures.
+
+---
+
+**5. Higher-order functions**
+
+Functions can take other functions as arguments. This is where things get
+flexible.
+
+```go
+func operate(a, b int, fn func(int, int) int) int {
+    return fn(a, b)
+}
+```
+
+You pass in the logic you want. Want to add? Pass add. Want to multiply? Pass
+multiply. Same function, different behavior. This is the foundation for things
+like `map`, `filter`, and `reduce` in Go.
+
+#### Methods & Receivers
+
+Go dont have classes, but you have methods using receivers. This is how you
+attach functions to your own types.
+
+**Value Receiver**
+
+When you don't need to modify the original, use value receiver.
+
+```go
+type User struct {
+    Name string
+}
+
+func (u User) greet() string {
+    return "Hello " + u.Name
+}
+```
+
+Call it like `user.greet()`. The function gets a copy of the struct. Good for
+read-only operations.
+
+---
+
+**Pointer Receiver**
+
+When you need to modify the original, use pointer receiver.
+
+```go
+func (u *User) rename(newName string) {
+    u.Name = newName
+}
+```
+
+The `*User` means it works on the actual struct, not a copy. Changes persist.
+This is also more efficient for large structs you're not copying everything.
+
+---
+
+> **TIP**:
+When in doubt, start with pointer receiver. It's more common in real code and avoids surprises with mutations.
+
+#### When to Use What
+
+- Use **value receiver** when:
+  - you don't need to modify the data
+  - the struct is small
+  - you want to be safe from accidental changes
+
+- Use **pointer receiver** when:
+  - you need to modify the data
+  - the struct is large (avoid copying memory)
+  - you want to share one instance across multiple calls
+
+### 3. Structs
+
+Structs are Go's way to group related data together. Think of them like
+lightweight objects no classes, no inheritance, just data and methods.
+
+```go
+type User struct {
+    Name string
+    Age  int
+}
+```
+
+That's a user with a name and age. Create one:
+
+```go
+var user = User{
+	Name: "Alaa",
+	Age: 20
+}
+```
+
+Access fields like `user.Name`. Simple.
+
+You can add methods to structs (that's the receivers we covered). That's where
+Go's "composition over inheritance" philosophy comes in you don't inherit, you
+just add methods to whatever you need.
+
+### 4. Error Handling
+
+Go's error handling is explicit. No exceptions, no try-catch. You handle errors
+as they happen.
+
+```go
+if err != nil {
+    return err
+}
+```
+
+You'll see this everywhere. Get used to it.
+
+The pattern is: do something, check if it failed, handle it. No hidden magic. No
+surprise crashes. Every function that can fail returns an error you decide what
+to do with it.
+
+> **WARNING**:
+Never ignore errors with `_`. If you do `result, _ := someFunction()`, you're silently swallowing failures. At minimum, log them. Your future self will thank you.
+
+### 5. Goroutines and Go channels (Later, not now)
+
+This is Go's concurrency running things in parallel. But don't start here.
+
+```go
+go someFunction()
+```
+
+It looks simple. Is simple. But using it correctly requires understanding
+channels, synchronization, race conditions. All things to learn after you've got
+the basics down.
+
+> **NOTE**:
+Concurrency is not parallelism. Go handles both, but start with writing good synchronous code first. Add `go` only when you've proven you need it, i will do another post about that.
+
+---
+
+## Build Something Real (Immediately)
+
+Don't stay in "learning mode".
+
+Pick one:
+
+- CLI todo app
+- simple REST API
+- file server
+- log parser
+
+Example: minimal HTTP server
+
+```go
+package main
+
+import (
+    "fmt"
+    "net/http"
+)
+
+func handler(w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintf(w, "hello from go server")
+}
+
+func main() {
+    http.HandleFunc("/", handler)
+    http.ListenAndServe(":8080", nil)
+}
+```
+
+Run:
+
+```bash
+go run main.go
+```
+
+Open:
+
+```
+http://localhost:8080
+```
+
+That's a running web server in under 20 lines of code. The standard library
+gives you this for free.
+
+---
+
+## The Go Mindset
+
+Go has strong opinions about how code should be written. Fight these and you'll
+fight the language. Accept them and you'll move fast.
+
+- **Simplicity over cleverness** Go prefers clear code over clever code. If you
+  find yourself writing complex abstractions to save a few lines, you're
+  probably doing it wrong. The goal is readability, not impressing other
+  developers.
+
+- **Explicit over magic** Go doesn't do implicit anything. No hidden type
+  conversions, no automatic imports, no magic. What you see is what you get.
+  This makes code easier to understand and debug.
+
+- **Composition over inheritance** Forget classes and inheritance hierarchies.
+  In Go, you compose behavior by embedding types. It's more flexible and less
+  fragile than traditional OOP.
+
+> **WARNING**:
+If you fight Go's opinions you will hate using it. If you embrace them, you will ship faster than with any other language You have used.
+
+---
+
+## Pros & Cons (No sugarcoat XD)
+
+  ::card{icon="i-lucide-zap" title="Pros"}
+
+- fast compile time
+- simple syntax
+- great standard library
+- easy deployment (single binary)
+- built-in concurrency
+  ::
+
+  ::card{icon="i-lucide-alert-triangle" title="Cons"}
+
+- repetitive error handling
+- limited abstractions
+- not very expressive
+- can feel restrictive
+  ::
+
+---
+
+## The Secret to Actually Learning Go
+
+Most people try to "finish learning" Go before building anything. They watch all
+the tutorials, read all the docs, watch all the videos.
+
+That doesn't work.
+
+You learn Go by:
+
+- writing code
+- breaking things
+- fixing them
+
+That's it. There's no shortcut. The more you struggle, the more you learn.
+
+> **NOTE**:
+Tutorials are great for context, but they don't build skills. Skills come from doing, not watching.
+
+---
+
+## My Take
+
+  ::card{icon="i-lucide-check-circle" title="Great for"}
+
+- build backend systems
+- care about performance and simplicity
+- want to ship fast
+  ::
+
+  ::card{icon="i-lucide-x-circle" title="Not for"}
+
+- want advanced language features
+- enjoy complex abstractions
+- are doing AI or heavy data science
+  ::
+
+So what matters is:
+
+- consistency
+- building real things
+- solving problems
+
+---
+
+## Conclusion
+
+Stop consuming content, Write code; Your first project will be bad but The next
+one will be better, That's the only path.
+
+And if you stick with it long enough you will understand why people like Go.
+
+Not because it's amazing Because it works, but for me its amazing XD.
+
+---
+
+### How to Actually Choose a Linux Distro (Without Losing Your Mind)
+
+- **URL**: https://portforio.samouly.fun/blog/choosing-linux-distro
+- **Date**: 2026-01-11
+- **Tags**: linux, distros, beginners, productivity
+- **Summary**: Switching from Windows? Distro-hopping for the 10th time? Here is a no-BS guide to picking a Linux distro that actually fits your needs, not what Reddit told you is "the best.
+
+## Introduction
+
+> What's the best Linux distro?
+
+I've been saw this question between my friends so many times. And honestly? It's the wrong question and i hated the answers those peoples says.
+
+Here's what i usually see: someone decides to try Linux or switch from his distro, opens Reddit, and falls into a infinity research loop. They read 47 opinions, watch 12 YouTube videos, and end up more confused than when they started. Sound familiar? Been there.
+
+this question should be replaced with **"what's the best distro for what I need right now."**
+
+so in this blog post i will not give a tier list and only talk about my personal opinion and the pros/cons i will share my linux experience on it. This is how I actually think about choosing a distro after years of trying different linux distroc, breaking things and finally settling down. Let's figure this out together.
+
+---
+
+## First thing is What Are You Actually Trying to Do?
+
+Before looking at any distro, ask yourself one question **what do I need this machine to do?**
+
+::card{icon="i-lucide-briefcase" title="I just want work to be done"}
+You are escaping Windows and want something that works. You dont care about "learning Linux" right now. You care about opening your browser, writing code, and not fighting your OS.
+
+**Priority here:** Stability, familiar UI, minimal setup.
+
+::card{icon="i-lucide-book-open" title="Learn Linux Properly"}
+You want to actually understand how Linux works or for educational purpose. The terminal isnt scary, its exciting. You're okay with reading wikis and figuring things out.
+
+**Priority here:** Good docs, forces you to understand, active community.
+
+::card{icon="i-lucide-gamepad-2" title="Gaming"}
+You want to play games and heared about "the better performance". Proton compatibility, driver support, and low friction matter more than philosophy.
+
+**Priority here:** NVIDIA/AMD drivers, Steam integration, "just works" gaming.
+
+::card{icon="i-lucide-code" title="Development"}
+Web dev, backend, DevOps. You need containers, package availability, and dev tools that don't fight you.
+
+**Priority here:** Package availability, Docker support, modern kernels.
+
+> **NOTE**:
+Pick based on what you need THIS DAYS. Not what you _might_ need in 6 months. You can always switch later.
+
+---
+
+## Second thing: The Three Paths of Linux
+
+After years of messing with different distros, Ive noticed they all fall into roughly three categories. Each has trade-offs. None is **_better_** than the others.
+
+### Path A: Ubuntu-Based (I Just Want It To Work)
+
+**Distros:** Ubuntu, Linux Mint, Pop!\_OS, Zorin
+
+This is where most people should start. Seriously. These distros are built for people who want Linux without the pain.
+
+::card{icon="i-simple-icons-ubuntu" title="What You Get"}
+
+- Massive community (every problem has a solution on Stack Overflow)
+- Hardware just works most of the time
+- Familiar desktop experience
+- LTS releases that don't break randomly
+
+**Trade-offs:** Not bleeding edge. Some bloat. Snap packages (if you're on Ubuntu proper).
+
+**My take:** Linux Mint is probably the smoothest Windows-to-Linux transition but for performance naaaah, kubuntu/xubuntu is much better. Pop!\_OS if you have an NVIDIA GPU. Both are solid, boring choices. Boring is good here XD.
+
+---
+
+### Path B: Arch-Based (~~I Want Control~~ I use Arch BTW)
+
+**Distros:** Arch Linux, EndeavourOS, CachyOS, Manjaro
+
+The "I use Arch btw" path. These distros give you the latest packages and complete control over your system. They also expect you to read documentation and fix things yourself.
+
+::card{icon="i-simple-icons-archlinux" title="What You Get"}
+
+- Rolling release (always up-to-date)
+- The legendary Arch Wiki (best Linux docs, period)
+- AUR (user repository with basically everything)
+- You understand your system because you built it
+
+**Trade-offs:** Things break sometimes. Updates can cause issues. You need to actually pay attention.
+
+**My take:** Don't start here if you're brand new. But if you want to actually _learn_ Linux? EndeavourOS gives you Arch with a friendly installer. CachyOS gives same stuff i mentioned in EndeavourOS and gives you the best usage and gaming prformance. Manjaro is more "batteries included" but sometimes lags behind on updates.
+
+> **WARNING**:
+**Please put this on mind:** Arch isn't "harder" than Ubuntu. Its different. It assumes you want to understand things. If that sounds exhausting, Path A is fine. If that sounds exciting, welcome.
+
+---
+
+### Path C: Fedora / Modern Mainstream
+
+**Distros:** Fedora Workstation, openSUSE Tumbleweed
+
+The middle path. Modern packages without the "you're on your own" energy of Arch. Corporate backing (Red Hat for Fedora) means good defaults and stability.
+
+::card{icon="i-simple-icons-fedora" title="What You Get"}
+
+- Latest stable packages (not bleeding edge, but close)
+- Excellent developer experience
+- Good GNOME/KDE integration
+- SELinux by default (security-focused)
+
+**Trade-offs:** Smaller community than Ubuntu. 6-month release cycle (Fedora). Some packages need extra repos.
+
+**My take:** Fedora is what I recommend to developers who don't want to think about their OS. It's modern, it's clean, it gets out of your way. Tumbleweed is basically "reliable rolling release" if that makes sense. (btw linus trovalds uses Fedora XD)
+
+---
+
+## Third thing: Questions to Actually Ask Yourself
+
+> **WARNING**:
+**_PLEASE_** Forget "what is the best distro." Answer these instead:
+
+### 1. How Much Time Do You Have?
+
+::card{icon="i-lucide-clock" title="Lots of Free Time"}
+Go explore. Try Arch or Gentoo. Break things. Learn from it. This is how you actually will understand Linux and thats how i learned.
+
+::card{icon="i-lucide-zap" title="Need to Work NOW"}
+Ubuntu LTS, Fedora, or Zorin. Install it. Configure your tools. Get back to work. The OS should be invisible.
+
+### 2. Are You Comfortable With Breaking Things?
+
+**"I'll figure it out"** → Rolling releases are fine. Arch, Gentoo, Fedora Rawhide.
+
+**"Please no, I have deadlines"** → LTS releases. Ubuntu LTS, Fedora Workstation, Debian Stable. These are boring and reliable. Thats the point.
+
+### 3. What Hardware Do You Have?
+
+| Hardware           | Recommendation                                        |
+| ------------------ | ----------------------------------------------------- |
+| NVIDIA GPU         | Pop!\_OS, CachyOS or Fedora (best driver integration) |
+| AMD GPU            | Literally anything (drivers are in-kernel)            |
+| Old/weak laptop    | Xubuntu, Linux Lite, or anything with XFCE/LXQt       |
+| Brand new hardware | Newer kernels = CachyOS, Fedora, Arch                 |
+
+### 4. Do You Have Software Requirements?
+
+I will be honest here. Some software just doesn't work on Linux:
+
+- **Adobe Suite** → No native support. Alternatives exist (GIMP, Inkscape) but they're different.
+- **Microsoft Office** → Use the web version or LibreOffice. Some people care, some don't.
+- **Professional creative software** → Check compatibility BEFORE switching.
+- **Dev tools** → You're fine. Almost everything works.
+
+> **WARNING**:
+Check your must-have software BEFORE committing. Install the distro in a VM first. I learned this the hard way.
+
+---
+
+## WatchOut! The _Wrong_ Reasons to Pick a Distro
+
+Let me save you some time. These are bad reasons:
+
+::card{icon="i-lucide-x-circle" title="Reasons That Don't Matter"}
+
+- "Reddit said it's the best" — Reddit says a lot of things.
+- "It looks cool in screenshots" — You can rice ANY distro. The desktop environment matters, not the distro.
+- "Real Linux users use Arch" — Gatekeeping nonsense. Use what works for you.
+- "I saw a youtube video says X distro is the best." — we are not talking about Cars here dude, each distro is the best for specific usage.
+- "Ubuntu is for noobs" — Ubuntu runs half the internet's servers. Its for getting work done.
+- "I need to be unique" — Your OS is a tool, not a personality trait. (but still i use Arch btw XD)
+
+---
+
+## My Recommendations
+
+Okay you want actual recommendations? Fine. Here's what I'd tell a friend:
+
+| Your Situation                      | My Pick                         | Why                                                       |
+| ----------------------------------- | ------------------------------- | --------------------------------------------------------- |
+| First time from Windows             | **ZorinOS**                     | Familiar, stable, huge community                          |
+| Gaming focused                      | **CachyOS** or **Nobara**       | Best driver support, gaming-optimized                     |
+| Developer (web/backend, etc.)       | **Fedora Workstation**          | Modern, clean, stays out of your way                      |
+| Want reproducibility + full control | **NixOS**                       | Different beast, but worth it if you value config-as-code |
+| Want to learn Linux                 | **EndeavourOS** or **CachyOS**  | Arch made accessible, great learning experience           |
+| Already comfortable, want control   | **Arch** or **NixOS**           | Full control, your way                                    |
+| Server / production                 | **Debian** or **Ubuntu Server** | Battle-tested, boring, reliable                           |
+| Old hardware                        | **Xubuntu** or **Linux Lite**   | Lightweight, still functional                             |
+
+> **TIP**:
+Notice how there's no "one best distro"? Basically different needs, different tools. That's the point.
+
+---
+
+## The Actual Secret
+
+Here is what nobody tells you:
+
+**It doesn't matter that much.**
+
+Seriously. All mainstream distros in 2026 are good. They all run the same Linux kernel. They all have similar package sets. The differences are mostly:
+
+1. Package manager (apt vs dnf vs pacman)
+2. Kernel compilation time configurations
+3. Release model (fixed vs rolling)
+4. Default desktop environment (which you can change anyway)
+5. Community size and culture
+
+> **NOTE**:
+The best distro is the one you stop thinking about. The one that works for YOUR workflow and gets out of your way.
+
+---
+
+## The "Just Try It" Approach
+
+If you're still stuck, here is my actual advice:
+
+### 1. Install ZorinOS or Fedora in a VM
+
+Takes 30 minutes (if your network speed is a turtle like mine). No commitment. Get a feel for it.
+
+### 2. Use it for actual work
+
+Don't just poke around. Actually try your workflow. Your editor. Your browser. Your tools.
+
+### 3. If it works, install it for real
+
+If it doesn't? Try another one. That's allowed.
+
+### 4. Revisit in 6 months
+
+Your needs changed. Maybe you want more control now. Maybe you want less hassle. Switch if you want.
+
+> **NOTE**:
+Linux isn't a marriage. It's a tool. Tools can be replaced when they stop serving you.
+
+---
+
+## Conclusion
+
+Stop researching. Start using.
+
+The perfect distro doesn't exist. The right distro for you right now does. And the only way to find it is to actually install something and use it (and broke it).
+
+Will you pick the "wrong" distro? Maybe. Will it matter in 6 months? Probably not. The skills transfer. The experience matters. The specific distro? It's just the vehicle.
+
+Pick something. Install it. Use it for a month. If it annoys you, switch. That's the Linux way.
+
+And hey, if you eventually end up on NixOS like me, I won't judge. Actually, I'll probably say "I told you so."
+
+But that's [a different blog post](/blog/why-nix).
+
+---
+
+### Why NixOS and Nix, is it just hype?
+
+- **URL**: https://portforio.samouly.fun/blog/why-nix
+- **Date**: 2026-01-09
+- **Tags**: nixos, nix, linux, dotfiles, productivity
+- **Summary**: Tired of 'it works on my machine'? Discover how Nix and NixOS solve dependency hell with declarative configuration and reproducible builds. Docker meets Infrastructure as Code - but is it revolutionary or just hype?
+
+## Introduction
+
+> It works on my machine.
+
+How many times have you heard this phrase? Or worse, how many times have you **said it**?
+
+Picture this: You're two months into a project. Everything runs perfectly on your laptop. You push to production and **disaster strikes**. Wrong library version. Missing environment variable. Or your colleague just installed packages differently than you did.
+
+The usual fix? Docker containers, virtual environments, documentation nobody reads, and hours of debugging. Been there way too many times.
+
+But there's a system that solves this at its core: **NixOS and Nix**.
+
+The question is: Is this another Linux trend, or is there something genuinely revolutionary here?
+
+Let's find out.
+
+---
+
+## What is Nix and NixOS?
+
+Two things exist here: **Nix** (the package manager) and **NixOS** (the operating system). You can use one without the other.
+
+### Nix: The Package Manager
+
+Nix builds packages in **complete isolation** from each other. If a package works on one machine, it **will** work on another. No exceptions.
+
+Instead of dumping packages into `/usr/bin` like every other package manager, Nix stores everything in `/nix/store` with a **unique cryptographic hash**:
+
+```bash
+/nix/store/nawl092prjblbhvv16kxxbk6j9gkgcqm-git-2.47.1
+/nix/store/x8dhcf2kpl5h4lm9ci3k2y9vn8qlx9cd-nodejs-24.1.0
+```
+
+That random string? It's a **hash of everything** used to build the package — source files, dependencies, compiler flags, all of it. Change anything, get a different hash, get a different package. I know, sounds nerdy but stick with me.
+
+**The Nix Formula**
+
+Think of it as a **deterministic build process** where specific inputs always generate the exact same, immutable output:
+
+```
+SOURCE CODE + DEPENDENCIES + BUILD SCRIPT
+              ↓
+        NIX HASH FUNCTION
+              ↓
+UNIQUE STORE PATH: /nix/store/x8dhkfewprojgihtrmvcf2...-nodejs-24.1.0
+```
+
+- **Input A:** `git-source` + `openssl-3.0` → **Result:** `..5yn92-git`
+- **Input B:** `git-source` + `openssl-3.1` → **Result:** `..fx23f-git`
+
+_Even a tiny security patch in a dependency (like moving from OpenSSL 3.0 to 3.1) creates a completely new, isolated path. Your old version stays untouched, and the new one doesn't overwrite it._
+
+> So yeah — Node 20 and Node 24 can coexist. Go 1.24 and 1.25 on the same system. Python 3.9 and 3.11 simultaneously. **No conflicts. Ever.** Each project gets exactly what it needs.
+
+### NixOS: The Operating System
+
+NixOS extends this concept to your **entire system**. Everything — kernel, services, packages, configs — lives in **declarative files**.
+
+Traditional approach (imperative):
+
+```bash
+sudo apt install nginx
+sudo systemctl enable nginx
+# manually edit configs
+# hope you documented this
+# pray nothing breaks
+```
+
+NixOS approach (declarative):
+
+```nix
+{
+  services.nginx.enable = true;
+  services.nginx.virtualHosts."example.com" = {
+    root = "/var/www";
+  };
+}
+```
+
+Run `sudo nixos-rebuild switch` and your system **becomes** that description. That's it.
+
+### Immutability: The Core Principle
+
+The `/nix/store` is **read-only and immutable**. Nothing gets deleted or modified — Nix creates new versions and symlinks to them.
+
+This is why rollbacks are **instant**. Every system state you've ever had is still there. Something breaks? Reboot, select the previous generation, back to working in **30 seconds**. I've saved my own setup more times than I'd like to admit this way.
+
+> It's **Git for your entire operating system**. Every change tracked. Every state recoverable. Time travel for your OS.
+
+### Garbage Collection: The Smart Cleanup
+
+You're probably thinking: "Won't my disk fill up?"
+
+**Traditional Distros:** When you run `apt remove`, packages are **gone forever**. Want it back? Reinstall. Made a mistake? Too bad. Orphaned dependencies? Hunt them down manually with `apt autoremove`.
+
+**Nix's Intelligence:** Nothing gets deleted until you **explicitly run garbage collection**. And even then, it only removes what's truly unreachable — nothing any generation or project depends on.
+
+```bash
+# Preview what would be deleted
+nix-collect-garbage --dry-run
+
+# Delete unreachable packages
+nix-collect-garbage
+
+# Delete old generations
+nix-collect-garbage -d
+
+# Delete generations older than 30 days
+nix-collect-garbage --delete-older-than 30d
+```
+
+Automate it in NixOS:
+
+```nix
+{
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 30d";
+  };
+}
+```
+
+Your last month of generations stays safe while everything older gets cleaned automatically.
+
+---
+
+## The Real Problems Nix Solves
+
+Managing development environments is painful. Let's talk about the actual problems you face **daily**.
+
+### Version Juggling Nightmare
+
+You're juggling three Node.js projects. One needs Node 20, another needs Node 22, the new microservice needs Node 24. You've got `nvm` but you keep forgetting to switch versions and waste time debugging. (Ask me how I know.)
+
+**The usual mess:**
+
+- Open terminal → forget `nvm use` → build fails
+- Install global package for Project A → breaks Project B
+- Spend Friday afternoon debugging "but it worked yesterday"
+
+**With Nix:** Just `cd` into a project directory. **That's it**. Nix sees the config and loads the exact environment needed. Automatically.
+
+```nix
+# Project A - Node 20
+{ pkgs ? import <nixpkgs> {} }:
+pkgs.mkShell {
+  buildInputs = with pkgs; [
+    nodejs_20
+    python311  # for native modules
+  ];
+}
+```
+
+Switch projects? Different Node version loads automatically. **No thinking required**.
+
+### "Works on My Machine" Syndrome
+
+Your colleague pushes a TypeScript project. You clone it, run `npm install`, compilation **fails**. Different TypeScript version. Missing build tool. Now you're debugging setup instead of coding.
+
+**The old way:** Write documentation nobody reads. Debug the same issues with every new team member.
+
+**The Nix way:** Share a `flake.nix` file. Run one command. Get the **exact same setup**.
+
+```nix
+{
+  description = "TypeScript project";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+
+  outputs = { nixpkgs, ... }: {
+    devShells.x86_64-linux.default =
+      let pkgs = nixpkgs.legacyPackages.x86_64-linux;
+      in pkgs.mkShell {
+        buildInputs = with pkgs; [
+          nodejs_24
+          nodePackages.typescript
+          nodePackages.eslint
+        ];
+      };
+  };
+}
+```
+
+> Instead of writing instructions for how to build an environment, you're **sharing the actual environment itself**. Like `package.json` + `package-lock.json` but for your **entire development setup**, not just JavaScript packages.
+
+### CI/CD Inconsistency Hell
+
+Your Go project works locally. Push to CI? **Fails**. Different environment variables. Slightly different Go version. Manual configuration from months ago nobody remembers.
+
+You end up with three different behaviors: your machine, your coworker's machine, and CI.
+
+**Nix fixes this:** The environment **is code**. Same file, same environment everywhere.
+
+```nix
+{
+  description = "Go project";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+
+  outputs = { nixpkgs, ... }: {
+    devShells.x86_64-linux.default =
+      let pkgs = nixpkgs.legacyPackages.x86_64-linux;
+      in pkgs.mkShell {
+        buildInputs = with pkgs; [
+          go_1_24
+          golangci-lint
+          delve
+        ];
+        shellHook = ''
+          export GOPATH=$PWD/.go
+          export PATH=$GOPATH/bin:$PATH
+        '';
+      };
+  };
+}
+```
+
+This file goes in your repo. Everyone who uses it — local devs, CI, staging, production — gets the **exact same setup**. The inconsistency just disappears.
+
+---
+
+## How Does Nix Work? The Magic Behind
+
+### Pure Functions: Mathematical Reproducibility
+
+Nix treats every package as a **pure function** — a mathematical function where the same inputs **always** produce the **exact** same output.
+
+```
+inputs (source + dependencies + tools) → cryptographic hash → output package
+```
+
+> Nix is designed around reproducibility. While not every package is guaranteed to be bit-for-bit reproducible today, the system enforces strict input purity — making non-reproducible builds the exception, not the rule.
+
+Change **anything** in the inputs, get a different hash, get a different package.
+
+> You literally can't accidentally break reproducibility. The system **enforces it mathematically**. It's not a convention or a best practice — it's the only way the system works.
+
+### The `/nix/store`: Isolation at Scale
+
+Every package lives in `/nix/store` with a unique hash:
+
+```bash
+$ ls /nix/store/ | grep nodejs
+3j8d...-nodejs-24.1.0
+7k2m...-nodejs-22.11.0
+9xp4...-nodejs-20.18.1
+```
+
+Those prefixes are **content-addressable hashes** representing everything used to build that package. This is why multiple versions coexist without conflicts.
+
+### Declarative vs Imperative
+
+Traditional systems are **imperative** — you tell them what to do step by step:
+
+```bash
+# Steps that modify state
+sudo apt update
+sudo apt install nginx
+sudo systemctl enable nginx
+sudo vim /etc/nginx/nginx.conf
+# Hope you documented this
+# Pray it works on another machine
+```
+
+Nix is **declarative** — you describe what you want:
+
+```nix
+{
+  services.nginx = {
+    enable = true;
+    virtualHosts."myapp.com" = {
+      root = "/var/www/myapp";
+    };
+  };
+}
+```
+
+Run `nixos-rebuild switch` and your system **transforms** to match that description.
+
+> Imperative is "do this, then do that." Declarative is "the system should look like this." One creates state. The other **describes** state.
+
+### Atomic Rollbacks
+
+When you update your system:
+
+1. Nix builds new versions
+2. Creates a new **generation**
+3. Symlinks to the new generation
+4. **Keeps all old generations intact**
+
+Boot menu shows your history:
+
+```
+NixOS - Generation 47 (current)
+NixOS - Generation 46
+NixOS - Generation 45
+...
+```
+
+Something broke? Boot into the previous generation or run:
+
+```bash
+sudo nixos-rebuild switch --rollback
+```
+
+**30 seconds. Done.** No reinstalling packages, no configuration restoration, no database migrations. Just instant time travel.
+
+---
+
+## Nix vs The World: Honest Comparisons
+
+### Nix vs Docker: Complementary, Not Competitors
+
+They solve **different problems** and work great together.
+
+**Docker's Strength — Runtime Isolation**
+
+Packages your app with everything it needs. Ship the container, runs identically everywhere. Massive ecosystem.
+
+Weaknesses:
+
+- Build process itself isn't reproducible
+- `RUN apt-get install` fetches latest versions (not deterministic)
+- Can only inherit from single base image
+- Build cache breaks between machines
+
+**Nix's Strength — Build Reproducibility**
+
+Every package built from exact pinned dependencies. Cryptographic guarantees.
+
+Weaknesses:
+
+- Steeper learning curve (not gonna sugarcoat it)
+- Smaller ecosystem
+- Less familiar to teams
+
+> Here's the cool part — you can use Nix to build **reproducible Docker images**.
+
+```nix
+{ pkgs ? import <nixpkgs> {} }:
+pkgs.dockerTools.buildLayeredImage {
+  name = "my-app";
+  tag = "latest";
+  contents = with pkgs; [ nodejs_24 bash ];
+  config.Cmd = [ "${pkgs.nodejs_24}/bin/node" "app.js" ];
+}
+```
+
+Nix's reproducibility during build + Docker's portability for deployment. Companies like **Replit** and **Shopify** do this.
+
+### Nix vs apt/yum/brew: Declarative vs Imperative
+
+| Feature               | apt/yum/brew                    | Nix                                 |
+| --------------------- | ------------------------------- | ----------------------------------- |
+| **Approach**          | Imperative (do this, then that) | Declarative (system should be this) |
+| **Reproducibility**   | None — state drifts over time   | Perfect — same config = same system |
+| **Multiple Versions** | Conflicts                       | Coexist peacefully                  |
+| **Rollbacks**         | None                            | Instant (30 seconds)                |
+| **Version Control**   | Manual documentation            | Git-based configs                   |
+
+Traditional package managers **modify global state**. Nix **builds deterministic state**.
+
+### Nix vs Traditional Linux Distros
+
+**Ubuntu/Debian**
+
+- Best for: General use, "just works" experience
+- Strengths: Massive community, everything documented, stable LTS releases
+- Weaknesses: State drifts, updates break things, no atomic rollbacks
+
+**Arch Linux**
+
+- Best for: Cutting-edge packages, DIY approach
+- Strengths: Latest software, extensive wiki, complete control
+- Weaknesses: Manual everything, breaks occasionally, no safety net
+
+**Fedora**
+
+- Best for: Modern tech, balanced approach
+- Strengths: Latest features, Red Hat backing, SELinux integration
+- Weaknesses: 6-month release cycle, traditional package management
+
+**NixOS**
+
+- Best for: Reproducibility, declarative infrastructure
+- Strengths: Atomic rollbacks, perfect reproducibility, version control everything
+- Weaknesses: Steep learning curve, smaller community, weird syntax (seriously, functional programming in a config file?)
+
+### Nix vs Language-Specific Tools
+
+Every language has version managers: `nvm`, `pyenv`, `rbenv`, `gvm`.
+
+**Problems:**
+
+- Different tool for each language
+- Don't manage system dependencies
+- Inconsistent across projects
+
+**Nix replaces all of them:**
+
+```nix
+{
+  description = "Multi-language project";
+  outputs = { nixpkgs, ... }: {
+    devShells.x86_64-linux.default =
+      let pkgs = nixpkgs.legacyPackages.x86_64-linux;
+      in pkgs.mkShell {
+        buildInputs = with pkgs; [
+          nodejs_24    # JavaScript
+          python311    # Python
+          go_1_24      # Go
+          rustc        # Rust
+          postgresql_16  # Database
+          redis        # Cache
+        ];
+      };
+  };
+}
+```
+
+**One tool. All languages. System dependencies included. Completely reproducible.**
+
+---
+
+## Key Killer Features
+
+### 1. True Reproducibility (Not Just Claims)
+
+Other systems **claim** reproducibility. Nix **enforces** it mathematically.
+
+> Same `flake.lock` = **identical environment** everywhere. Not "similar." Not "should work." **Identical.** Cryptographically guaranteed.
+
+### 2. Time Travel for Your System
+
+Every change creates a generation. Every generation is recoverable.
+
+```bash
+# List all generations
+nix-env --list-generations
+
+# Rollback to previous
+sudo nixos-rebuild switch --rollback
+
+# Switch to specific generation
+sudo nixos-rebuild switch --rollback 42
+```
+
+Broke something? You're **30 seconds** away from a working state. Always.
+
+### 3. Configuration as Code (For Real)
+
+Not "infrastructure as code" aspirationally. **Actually as code.**
+
+```nix
+# This IS your system. Not a description. The actual state.
+{
+  services.nginx.enable = true;
+  services.postgresql.enable = true;
+  services.redis.enable = true;
+
+  networking.firewall.allowedTCPPorts = [ 80 443 ];
+
+  users.users.deploy = {
+    isNormalUser = true;
+    extraGroups = [ "wheel" ];
+  };
+}
+```
+
+Check this into Git. Every machine built from this file is **identical**.
+
+### 4. Development Environments That Actually Work
+
+Share a `flake.nix`. Everyone gets the **exact** environment. Not documentation. Not instructions. The **actual environment**.
+
+> New teammate? `git clone` → `nix develop` → **coding in 2 minutes**. No setup docs. No "it works on my machine." Just instant productivity.
+
+### 5. Binary Caching
+
+Build once. Share everywhere. Teams using Cachix build packages **once** and everyone else downloads pre-built binaries.
+
+First developer builds? 20 minutes. Everyone else? **30 seconds**.
+
+---
+
+## Real-World Use Cases
+
+### Development Environments
+
+**Problem:** New developer spends two days installing tools, debugging versions, configuring environment.
+
+**Solution:** One file, one command.
+
+```nix
+{
+  description = "Backend API dev environment";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+
+  outputs = { nixpkgs, ... }: {
+    devShells.x86_64-linux.default =
+      let pkgs = nixpkgs.legacyPackages.x86_64-linux;
+      in pkgs.mkShell {
+        buildInputs = with pkgs; [
+          nodejs_24 python311 go_1_24
+          postgresql_16 redis
+          docker-compose kubectl
+        ];
+        shellHook = ''
+          export DATABASE_URL="postgresql://localhost/myapp"
+          echo "Dev environment loaded!"
+        '';
+      };
+  };
+}
+```
+
+**Real companies:** Replit, Shopify, Tweag use this for instant reproducible dev environments.
+
+### Production Servers
+
+**Problem:** 50 servers. One configured differently. Behaves differently. Nobody knows why.
+
+**Solution:** Entire server config in declarative file checked into Git.
+
+```bash
+nixos-rebuild switch --target-host api-prod-01
+```
+
+All 50 servers **identical**. Changes version-controlled. Rollback any change instantly.
+
+### Personal Dotfiles with Home Manager
+
+**Problem:** Three machines with different configs. Syncing manually is tedious.
+
+**Solution:** Declare your entire user environment.
+
+```nix
+{ pkgs, ... }: {
+  home.packages = with pkgs; [
+    neovim tmux git ripgrep fzf bat
+  ];
+
+  programs.git = {
+    enable = true;
+    userName = "Your Name";
+    userEmail = "you@example.com";
+  };
+
+  programs.zsh = {
+    enable = true;
+    shellAliases = {
+      ll = "ls -la";
+      gs = "git status";
+    };
+  };
+}
+```
+
+New laptop? Run a few commands. **Five minutes later**, entire setup restored perfectly.
+
+---
+
+## Advanced Tools
+
+### Flakes: package.json for Your System
+
+Flakes are exactly like `package.json` + `package-lock.json` combined — but for your **entire development environment**.
+
+Traditional Nix: `import <nixpkgs>` imports whatever version is on your system. Your coworker might have different version. CI might have yet another.
+
+**Flakes fix this:** `flake.lock` pins exact versions.
+
+```json
+{
+  "nodes": {
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1704067270,
+        "narHash": "sha256-...",
+        "rev": "63678e9f3d3afecfeafa0acead6239cdb54055e4"
+      }
+    }
+  }
+}
+```
+
+**Result:** Same `flake.lock` = identical environment everywhere. **No surprises. Ever.**
+
+> Flakes are still marked "experimental" but widely used in production. The Nix community considers them de facto stable after years with minimal breaking changes.
+
+### Home Manager: Version Control Your Workspace
+
+Manage your entire user environment declaratively. Not just packages — **everything**. Editor configs, shell aliases, Git settings, SSH keys.
+
+Changed your config? `home-manager switch` applies it instantly. Don't like it? `home-manager switch --rollback` reverts it.
+
+**It's literally version control for your entire workspace.**
+
+---
+
+## The Dark Side: Honest Challenges
+
+Let's be real about the problems.
+
+### The Learning Curve is Brutal
+
+> **Reality check:** Nix has one of the steepest learning curves in Linux.
+>
+> - First week: "What is this syntax?"
+> - First month: "I think I'm getting it... maybe"
+> - First six months: "Now I actually understand"
+>
+> You'll hit walls. Get frustrated. Question if it's worth it. I definitely did. Spent an entire weekend debugging why my shell wouldn't source properly. Turned out I forgot a semicolon. **This is normal.**
+
+### Documentation is Fragmented
+
+No single source of truth. Information scattered. Examples don't always work with current versions. You'll spend hours debugging something better docs could've solved in minutes.
+
+### The Ecosystem is Smaller
+
+Ubuntu has millions of users. NixOS? Significantly smaller community.
+
+In practice, that looks like:
+
+- Fewer Stack Overflow answers
+- Less corporate support
+- Gaming is harder (though improving)
+- Hardware compatibility can be tricky
+
+### When You Shouldn't Use NixOS
+
+**Don't use NixOS if:**
+
+- **You're new to Linux** — Start with Ubuntu or Fedora. Learn basics first.
+- **You need "just works" gaming** — Pop!\_OS or Arch with Steam will be smoother.
+- **You're on tight deadlines** — Don't learn NixOS while building production systems.
+- **Your team doesn't buy in** — If you're the only one using Nix, you're creating silos.
+
+### Build Times Can Be Painful
+
+First build might take forever. Updating your system could take 30 minutes if lots changed. Binary caches help, but that first experience is brutal. Pro tip: don't start a system rebuild right before a meeting.
+
+---
+
+## Getting Started
+
+### Step 1: Install Nix (Not NixOS)
+
+Start with **just the Nix package manager** on your existing system. Don't jump into full NixOS immediately.
+
+**Recommended installer** (enables Flakes by default):
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+```
+
+Verify:
+
+```bash
+nix --version
+```
+
+### Step 2: Try It Out
+
+```bash
+# Try cowsay temporarily
+nix shell nixpkgs#cowsay
+cowsay "Hello Nix!"
+
+# Install permanently
+nix profile install nixpkgs#firefox
+```
+
+### Step 3: Create Your First Dev Environment
+
+```nix
+{
+  description = "My first Nix environment";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+
+  outputs = { nixpkgs, ... }: {
+    devShells.x86_64-linux.default =
+      let pkgs = nixpkgs.legacyPackages.x86_64-linux;
+      in pkgs.mkShell {
+        buildInputs = with pkgs; [ nodejs_24 python311 ];
+      };
+  };
+}
+```
+
+Use it:
+
+```bash
+git init
+git add flake.nix
+nix develop
+```
+
+Perfect development environment. **That's it.**
+
+### Step 4: Learn More
+
+- [zero-to-nix.com](https://zero-to-nix.com) — Best beginner guide. Start here.
+- [nix.dev](https://nix.dev) — Official tutorials and docs.
+- [NixOS Wiki](https://wiki.nixos.org) — Community knowledge base.
+- [My complete NixOS setup](https://github.com/sam0uly/samouly-flake) — Real config with Flakes and Home Manager.
+
+### Step 5: Consider NixOS Later
+
+After you're comfortable with Nix for a few weeks, try NixOS in a VM first. **Don't rush this step.** NixOS is a commitment.
+
+---
+
+## Conclusion: Is It Worth The Hype?
+
+**Honestly? It depends.**
+
+### When The Hype is Real
+
+If you've ever:
+
+- Spent hours debugging "it works on my machine"
+- Lost weekends to broken updates
+- Wished you could time travel to a working state
+- Struggled to replicate environments across teams
+
+Then yes, **Nix is revolutionary**. The reproducibility **actually works**. The atomic rollbacks **actually work**. The declarative configuration **actually works**.
+
+### When The Hype Doesn't Matter
+
+But if you just need a stable desktop that works and don't care about reproducibility, then the hype doesn't apply to you. **And that's okay.** Ubuntu and Fedora serve most people perfectly.
+
+### The Real Value
+
+Nix isn't about being trendy. It's about **reliability through mathematics**. Your system becomes a pure function: same inputs → same outputs, guaranteed.
+
+For teams building production systems or requiring strict reproducibility, Nix provides value that's hard to quantify. The initial investment pays dividends daily.
+
+> Don't adopt Nix because it's trendy. Adopt it because it solves problems you actually have.
+
+Try it. Break it. Learn from it. Then decide for yourself. That's what I did anyway.
+
+The best part? With Nix, you can always roll back.
+
 ## Contact & Verification
 
 - **Email**: alasamouly@gmail.com (typically replies within 24 hours)
 - **Portfolio**: https://portforio.samouly.fun/
+- **Blog**: https://portforio.samouly.fun/blog
 - **Main Site**: https://samouly.fun/
-- **Blog**: https://samouly.fun/blog
 - **GitHub**: https://github.com/sam0uly
 - **X (Twitter)**: https://x.com/sam0uly
 - **Company**: https://charm.land
