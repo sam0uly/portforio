@@ -1,5 +1,6 @@
 import './styles.css';
 import { registerGrainientElement } from './grainient.js';
+import { loadBlogPosts } from './blogContent.js';
 import { Elm } from './Main.elm';
 
 registerGrainientElement();
@@ -13,14 +14,35 @@ const yearFmt = new Intl.DateTimeFormat(locale, { year: 'numeric', timeZone: 'UT
 const intFmt = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
 const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
+function readRouteFromPath() {
+  return window.location.pathname.replace(/\/+$/, '') || '/';
+}
+
 const app = Elm.Main.init({
   node: document.getElementById('app'),
   flags: {
     currentYear: yearFmt.format(new Date()),
     diveDepthMeters: intFmt.format(35),
     prefersReducedMotion: reducedMotionQuery.matches,
+    initialRoute: readRouteFromPath(),
+    blogPosts: loadBlogPosts(locale),
   },
 });
+
+if (app.ports?.pushRoute) {
+  app.ports.pushRoute.subscribe((routePath) => {
+    const nextPath = routePath.startsWith('/') ? routePath : `/${routePath}`;
+    if (window.location.pathname !== nextPath) {
+      history.pushState(null, '', nextPath);
+    }
+  });
+}
+
+if (app.ports?.routeChanged) {
+  window.addEventListener('popstate', () => {
+    app.ports.routeChanged.send(readRouteFromPath());
+  });
+}
 
 if (app.ports?.setTheme) {
   app.ports.setTheme.subscribe((themeName) => {
@@ -56,6 +78,8 @@ function setupUnifiedScroll() {
   const content = document.getElementById('main-content');
   const track = document.getElementById('mobile-scroll-track');
   const thumb = document.getElementById('mobile-scroll-thumb');
+  const topBlur = document.getElementById('sheet-blur-top');
+  const bottomBlur = document.getElementById('sheet-blur-bottom');
   if (!scroller || !track || !thumb) return;
 
   const LERP = 0.1;
@@ -69,20 +93,133 @@ function setupUnifiedScroll() {
   let lastTime = 0;
   let dragging = false;
   let dragOffset = 0;
+  let hasMobileToc = false;
+  let topBlurVisible = false;
+  let bottomBlurVisible = false;
+  let headingOffsets = [];
+  let lastActiveHeading = '';
 
   const clampScroll = (y) => Math.max(0, Math.min(maxScroll, y));
 
+  const setBlurVisible = (el, next, prev) => {
+    if (!el || next === prev) return prev;
+    el.dataset.visible = next ? 'true' : 'false';
+    return next;
+  };
+
+  const paintEdgeBlurs = (y) => {
+    const canScroll = maxScroll > 2;
+    topBlurVisible = setBlurVisible(topBlur, canScroll && y > 8 && !hasMobileToc, topBlurVisible);
+    bottomBlurVisible = setBlurVisible(bottomBlur, canScroll && y < maxScroll - 16, bottomBlurVisible);
+  };
+
   const paintThumb = (y) => {
+    paintEdgeBlurs(y);
     if (maxScroll <= 2) return;
     thumb.style.transform = `translate3d(0, ${((y / maxScroll) * travelPx).toFixed(2)}px, 0)`;
   };
 
-  const commit = (y) => {
+  const tocScrollState = new Map();
+
+  const centerTocNav = (navId, activeId, smooth) => {
+    const tocNav = document.getElementById(navId);
+    if (!tocNav || !activeId) return;
+    const activeBtn = tocNav.querySelector(`[data-toc-id="${CSS.escape(activeId)}"]`);
+    if (!activeBtn) return;
+    const maxNavScroll = Math.max(0, tocNav.scrollHeight - tocNav.clientHeight);
+    const targetTop = Math.max(
+      0,
+      Math.min(
+        maxNavScroll,
+        activeBtn.offsetTop - tocNav.offsetTop - tocNav.clientHeight / 2 + activeBtn.offsetHeight / 2
+      )
+    );
+
+    const prev = tocScrollState.get(navId);
+    if (!smooth || reducedMotionQuery.matches) {
+      if (prev?.raf) cancelAnimationFrame(prev.raf);
+      tocScrollState.delete(navId);
+      tocNav.scrollTop = targetTop;
+      return;
+    }
+
+    const state = prev || { current: tocNav.scrollTop, target: targetTop, raf: 0, last: 0 };
+    if (!state.raf) state.current = tocNav.scrollTop;
+    state.target = targetTop;
+    tocScrollState.set(navId, state);
+
+    if (state.raf) return;
+    const step = (now) => {
+      const el = document.getElementById(navId);
+      if (!el) {
+        state.raf = 0;
+        tocScrollState.delete(navId);
+        return;
+      }
+      const dt = state.last ? Math.min(0.05, (now - state.last) / 1000) : 1 / 60;
+      state.last = now;
+      const factor = 1 - Math.exp(-0.14 * dt * 60);
+      state.current += (state.target - state.current) * factor;
+      if (Math.abs(state.target - state.current) < 0.4) {
+        el.scrollTop = state.target;
+        state.raf = 0;
+        state.last = 0;
+        return;
+      }
+      el.scrollTop = state.current;
+      state.raf = requestAnimationFrame(step);
+    };
+    state.raf = requestAnimationFrame(step);
+  };
+
+  document.addEventListener('click', (event) => {
+    if (event.target instanceof Element && event.target.closest('#mobile-toc-toggle')) {
+      requestAnimationFrame(() => centerTocNav('mobile-toc-nav', lastActiveHeading, true));
+    }
+  });
+
+  const measureHeadings = () => {
+    const article = document.getElementById('article-body');
+    if (!article) {
+      headingOffsets = [];
+      lastActiveHeading = '';
+      return;
+    }
+    const scrollerTop = scroller.getBoundingClientRect().top;
+    const scrollTop = scroller.scrollTop;
+    const nodes = article.querySelectorAll('h2[id], h3[id], h4[id], h5[id], h6[id]');
+    headingOffsets = Array.from(nodes, (el) => ({
+      id: el.id,
+      top: el.getBoundingClientRect().top - scrollerTop + scrollTop,
+    }));
+  };
+
+  const syncActiveHeading = (y) => {
+    if (!app.ports?.activeHeadingChanged || !headingOffsets.length) return;
+    const threshold = y + 96;
+    let activeId = headingOffsets[0].id;
+    for (let i = 0; i < headingOffsets.length; i += 1) {
+      if (headingOffsets[i].top <= threshold) {
+        activeId = headingOffsets[i].id;
+      } else {
+        break;
+      }
+    }
+    if (activeId !== lastActiveHeading) {
+      lastActiveHeading = activeId;
+      app.ports.activeHeadingChanged.send(activeId);
+      centerTocNav('desktop-toc-nav', activeId, true);
+      centerTocNav('mobile-toc-nav', activeId, true);
+    }
+  };
+
+  const commit = (y, syncWindow = true) => {
     const v = clampScroll(y);
     lastCommitted = v;
     scroller.scrollTop = v;
-    window.scrollTo(0, v);
+    if (syncWindow) window.scrollTo(0, v);
     paintThumb(v);
+    syncActiveHeading(v);
   };
 
   const stop = () => {
@@ -101,18 +238,20 @@ function setupUnifiedScroll() {
 
     if (Math.abs(target - current) < 0.1) {
       current = target;
-      commit(current);
+      commit(current, true);
       raf = 0;
       lastTime = 0;
       return;
     }
 
-    commit(current);
+    commit(current, false);
     raf = requestAnimationFrame(tick);
   };
 
   const measure = () => {
     maxScroll = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+    hasMobileToc = window.innerWidth < 1280 && Boolean(document.getElementById('mobile-toc-toggle'));
+    measureHeadings();
     if (maxScroll <= 2) {
       document.body.style.height = '';
       track.style.opacity = '0';
@@ -188,6 +327,7 @@ function setupUnifiedScroll() {
       lastCommitted = y;
       scroller.scrollTop = y;
       paintThumb(y);
+      syncActiveHeading(y);
     },
     { passive: true }
   );
@@ -204,6 +344,7 @@ function setupUnifiedScroll() {
       lastCommitted = y;
       window.scrollTo(0, y);
       paintThumb(y);
+      syncActiveHeading(y);
     },
     { passive: true }
   );
@@ -259,6 +400,67 @@ function setupUnifiedScroll() {
   window.addEventListener('resize', measure, { passive: true });
   document.fonts?.ready?.then(measure);
   measure();
+
+  const footerEl = document.getElementById('dither-footer');
+  if (footerEl && app.ports?.footerVisibilityChanged && 'IntersectionObserver' in window) {
+    let lastFooterVisible = null;
+    const footerObserver = new IntersectionObserver(
+      (entries) => {
+        const isVisible = entries.some((entry) => entry.isIntersecting);
+        if (isVisible !== lastFooterVisible) {
+          lastFooterVisible = isVisible;
+          app.ports.footerVisibilityChanged.send(isVisible);
+        }
+      },
+      { root: scroller, rootMargin: '80px 0px' }
+    );
+    footerObserver.observe(footerEl);
+  }
+
+  return {
+    reset() {
+      stop();
+      current = 0;
+      target = 0;
+      lastActiveHeading = '';
+      commit(0);
+      const tocNav = document.getElementById('desktop-toc-nav');
+      if (tocNav) tocNav.scrollTop = 0;
+      requestAnimationFrame(() => {
+        measure();
+      });
+    },
+    scrollTo(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const scrollerRect = scroller.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const topOffset = window.innerWidth < 1280 ? 68 : 24;
+      const nextTarget = clampScroll(scroller.scrollTop + (elRect.top - scrollerRect.top) - topOffset);
+      if (reducedMotionQuery.matches) {
+        stop();
+        current = nextTarget;
+        target = nextTarget;
+        commit(nextTarget);
+        return;
+      }
+      current = scroller.scrollTop;
+      target = nextTarget;
+      if (!raf) raf = requestAnimationFrame(tick);
+    },
+  };
 }
 
-setupUnifiedScroll();
+const scrollController = setupUnifiedScroll();
+
+if (app.ports?.resetScroll && scrollController) {
+  app.ports.resetScroll.subscribe(() => {
+    scrollController.reset();
+  });
+}
+
+if (app.ports?.scrollToHeading && scrollController) {
+  app.ports.scrollToHeading.subscribe((id) => {
+    scrollController.scrollTo(id);
+  });
+}

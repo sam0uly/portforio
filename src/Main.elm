@@ -1,6 +1,7 @@
 port module Main exposing (main)
 
 import BayerMask
+import Blog
 import Browser
 import Browser.Events
 import DitherFooter
@@ -30,10 +31,36 @@ port reducedMotionChanged : (Bool -> msg) -> Sub msg
 port setTheme : String -> Cmd msg
 
 
+port pushRoute : String -> Cmd msg
+
+
+port resetScroll : () -> Cmd msg
+
+
+port scrollToHeading : String -> Cmd msg
+
+
+port routeChanged : (String -> msg) -> Sub msg
+
+
+port activeHeadingChanged : (String -> msg) -> Sub msg
+
+
+port footerVisibilityChanged : (Bool -> msg) -> Sub msg
+
+
+type Route
+    = Home
+    | BlogIndex
+    | BlogPost String
+
+
 type alias Flags =
     { currentYear : String
     , diveDepthMeters : String
     , prefersReducedMotion : Bool
+    , initialRoute : String
+    , blogPosts : List Blog.Post
     }
 
 
@@ -53,11 +80,16 @@ type CopyState
 
 type alias Model =
     { flags : Flags
+    , route : Route
+    , pendingRoute : Maybe Route
+    , lastPostSlug : Maybe String
     , theme : Theme
     , motionPlaying : Bool
     , bayerMask : BayerMask.Model
     , ditherTop : DitherTop.Model
     , ditherFooter : DitherFooter.Model
+    , footerVisible : Bool
+    , blog : Blog.Model
     , copyState : CopyState
     , liveAnnouncement : String
     }
@@ -66,13 +98,71 @@ type alias Model =
 type Msg
     = TopDitherMsg DitherTop.Msg
     | FooterDitherMsg DitherFooter.Msg
+    | BlogMsg Blog.Msg
     | AnimationTick Float
     | ToggleTheme
     | ToggleMotion
     | ReducedMotionChanged Bool
+    | Navigate Route
+    | ExternalRouteChanged String
+    | ActiveHeadingChanged String
+    | FooterVisibilityChanged Bool
     | CopyEmail
     | GotClipboardResult Bool
     | ResetCopyState
+    | ResetCodeCopy
+
+
+routeFromString : String -> Route
+routeFromString raw =
+    let
+        cleaned =
+            raw
+                |> String.trim
+                |> (\s ->
+                        if String.startsWith "/" s then
+                            String.dropLeft 1 s
+
+                        else
+                            s
+                   )
+                |> (\s ->
+                        if String.endsWith "/" s then
+                            String.dropRight 1 s
+
+                        else
+                            s
+                   )
+    in
+    if cleaned == "blog" then
+        BlogIndex
+
+    else if String.startsWith "blog/" cleaned then
+        let
+            slug =
+                String.dropLeft 5 cleaned
+        in
+        if String.isEmpty slug then
+            BlogIndex
+
+        else
+            BlogPost slug
+
+    else
+        Home
+
+
+routeToString : Route -> String
+routeToString route =
+    case route of
+        Home ->
+            "/"
+
+        BlogIndex ->
+            "/blog"
+
+        BlogPost slug ->
+            "/blog/" ++ slug
 
 
 emailAddress : String
@@ -85,15 +175,27 @@ defaultFlags =
     { currentYear = "2026"
     , diveDepthMeters = "35"
     , prefersReducedMotion = False
+    , initialRoute = "/"
+    , blogPosts = []
     }
 
 
 decodeFlags : Decoder Flags
 decodeFlags =
-    Decode.map3 Flags
+    Decode.map5 Flags
         (Decode.field "currentYear" Decode.string)
         (Decode.field "diveDepthMeters" Decode.string)
         (Decode.field "prefersReducedMotion" Decode.bool)
+        (Decode.oneOf
+            [ Decode.field "initialRoute" Decode.string
+            , Decode.succeed "/"
+            ]
+        )
+        (Decode.oneOf
+            [ Decode.field "blogPosts" Blog.decodePosts
+            , Decode.succeed []
+            ]
+        )
 
 
 projects : List Project
@@ -159,13 +261,29 @@ init rawFlags =
 
         ( topModel, topCmd ) =
             DitherTop.init decodedFlags.prefersReducedMotion
+
+        initialRoute =
+            routeFromString decodedFlags.initialRoute
+
+        initialSlug =
+            case initialRoute of
+                BlogPost slug ->
+                    Just slug
+
+                _ ->
+                    Nothing
     in
     ( { flags = decodedFlags
+      , route = initialRoute
+      , pendingRoute = Nothing
+      , lastPostSlug = initialSlug
       , theme = Dark
       , motionPlaying = not decodedFlags.prefersReducedMotion
       , bayerMask = BayerMask.init decodedFlags.prefersReducedMotion
       , ditherTop = topModel
       , ditherFooter = DitherFooter.init decodedFlags.prefersReducedMotion
+      , footerVisible = True
+      , blog = Blog.init decodedFlags.blogPosts
       , copyState = CopyIdle
       , liveAnnouncement = ""
       }
@@ -176,15 +294,20 @@ init rawFlags =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     let
+        onHome =
+            model.route == Home
+
         needsFrames =
-            model.motionPlaying
-                || BayerMask.isAnimating model.bayerMask
-                || DitherTop.isAnimating model.ditherTop
-                || DitherFooter.isAnimating model.ditherFooter
+            BayerMask.isAnimating model.bayerMask
+                || (onHome && (model.motionPlaying || DitherTop.isAnimating model.ditherTop))
+                || (model.footerVisible && DitherFooter.isAnimating model.ditherFooter)
     in
     Sub.batch
         [ clipboardResult GotClipboardResult
         , reducedMotionChanged ReducedMotionChanged
+        , routeChanged ExternalRouteChanged
+        , activeHeadingChanged ActiveHeadingChanged
+        , footerVisibilityChanged FooterVisibilityChanged
         , if needsFrames then
             Browser.Events.onAnimationFrameDelta AnimationTick
 
@@ -216,27 +339,92 @@ update msg model =
             , Cmd.none
             )
 
+        BlogMsg subMsg ->
+            let
+                ( nextBlog, effect ) =
+                    Blog.update subMsg model.blog
+
+                cmds =
+                    List.filterMap identity
+                        [ Maybe.map scrollToHeading effect.scrollTo
+                        , Maybe.map copyToClipboard effect.copyText
+                        , Maybe.map (\_ -> Process.sleep 1800 |> Task.perform (\_ -> ResetCodeCopy)) effect.copyText
+                        ]
+            in
+            ( { model | blog = nextBlog }
+            , Cmd.batch cmds
+            )
+
+        ResetCodeCopy ->
+            ( { model | blog = Blog.clearCopiedCode model.blog }
+            , Cmd.none
+            )
+
+        ActiveHeadingChanged headingId ->
+            ( { model | blog = Blog.setActiveHeading headingId model.blog }
+            , Cmd.none
+            )
+
+        FooterVisibilityChanged isVisible ->
+            ( { model | footerVisible = isVisible }, Cmd.none )
+
         AnimationTick dtMs ->
             let
-                ( nextMask, maybeSwappedTheme ) =
+                ( nextMask, maskEvent ) =
                     BayerMask.tick dtMs model.bayerMask
 
-                ( nextTheme, themeCmd ) =
-                    case maybeSwappedTheme of
-                        Just target ->
-                            ( target, setTheme (themeToString target) )
+                ( ( nextTheme, nextRoute, nextPending ), maskCmd ) =
+                    case maskEvent of
+                        BayerMask.SwapTheme target ->
+                            ( ( target, model.route, model.pendingRoute )
+                            , setTheme (themeToString target)
+                            )
 
-                        Nothing ->
-                            ( model.theme, Cmd.none )
+                        BayerMask.SwapRoute ->
+                            ( ( model.theme, Maybe.withDefault model.route model.pendingRoute, Nothing )
+                            , resetScroll ()
+                            )
+
+                        BayerMask.NoEvent ->
+                            ( ( model.theme, model.route, model.pendingRoute )
+                            , Cmd.none
+                            )
+
+                nextLastSlug =
+                    case nextRoute of
+                        BlogPost slug ->
+                            Just slug
+
+                        _ ->
+                            model.lastPostSlug
             in
             ( { model
                 | theme = nextTheme
+                , route = nextRoute
+                , pendingRoute = nextPending
+                , lastPostSlug = nextLastSlug
                 , bayerMask = nextMask
-                , ditherTop = DitherTop.tick model.motionPlaying dtMs model.ditherTop
-                , ditherFooter = DitherFooter.tick model.motionPlaying dtMs model.ditherFooter
+                , ditherTop =
+                    if model.route == Home then
+                        DitherTop.tick model.motionPlaying dtMs model.ditherTop
+
+                    else
+                        model.ditherTop
+                , ditherFooter =
+                    if model.footerVisible then
+                        DitherFooter.tick model.motionPlaying dtMs model.ditherFooter
+
+                    else
+                        model.ditherFooter
               }
-            , themeCmd
+            , maskCmd
             )
+
+        Navigate target ->
+            startNavigation True target model
+
+        ExternalRouteChanged rawRoute ->
+            startNavigation False (routeFromString rawRoute) model
 
         ToggleTheme ->
             let
@@ -327,14 +515,169 @@ update msg model =
             ( { model | copyState = CopyIdle }, Cmd.none )
 
 
+startNavigation : Bool -> Route -> Model -> ( Model, Cmd Msg )
+startNavigation shouldPush target model =
+    let
+        alreadyThere =
+            model.route == target && model.pendingRoute == Nothing
+
+        alreadyHeadingThere =
+            model.pendingRoute == Just target
+    in
+    if alreadyThere || alreadyHeadingThere then
+        ( model, Cmd.none )
+
+    else
+        let
+            announcement =
+                case target of
+                    Home ->
+                        "Navigated to portfolio."
+
+                    BlogIndex ->
+                        "Navigated to blog."
+
+                    BlogPost _ ->
+                        "Opened blog post."
+
+            pushCmd =
+                if shouldPush then
+                    pushRoute (routeToString target)
+
+                else
+                    Cmd.none
+
+            ( nextMask, immediate ) =
+                BayerMask.startRouteSwitch model.flags.prefersReducedMotion model.bayerMask
+        in
+        if immediate then
+            ( { model
+                | route = target
+                , pendingRoute = Nothing
+                , lastPostSlug =
+                    case target of
+                        BlogPost slug ->
+                            Just slug
+
+                        _ ->
+                            model.lastPostSlug
+                , bayerMask = nextMask
+                , liveAnnouncement = announcement
+              }
+            , Cmd.batch [ pushCmd, resetScroll () ]
+            )
+
+        else
+            ( { model
+                | pendingRoute = Just target
+                , bayerMask = nextMask
+                , liveAnnouncement = announcement
+              }
+            , pushCmd
+            )
+
+
 focusRing : String
 focusRing =
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--page-fg)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--page-bg)]"
 
 
+onInternalLinkClick : Msg -> Html.Attribute Msg
+onInternalLinkClick msg =
+    Events.preventDefaultOn "click"
+        (Decode.map4
+            (\ctrl meta shift alt ->
+                if ctrl || meta || shift || alt then
+                    Decode.fail "modifier click"
+
+                else
+                    Decode.succeed ( msg, True )
+            )
+            (Decode.field "ctrlKey" Decode.bool)
+            (Decode.field "metaKey" Decode.bool)
+            (Decode.field "shiftKey" Decode.bool)
+            (Decode.field "altKey" Decode.bool)
+            |> Decode.andThen identity
+        )
+
+
+makeBlogConfig : Theme -> Bool -> String -> { toMsg : Blog.Msg -> Msg, onBackHome : Msg, onOpenBlogIndex : Msg, onOpenPost : String -> Msg, onToggleTheme : Msg, onToggleMotion : Msg, theme : Theme, motionPlaying : Bool, currentYear : String }
+makeBlogConfig theme motionPlaying currentYear =
+    { toMsg = BlogMsg
+    , onBackHome = Navigate Home
+    , onOpenBlogIndex = Navigate BlogIndex
+    , onOpenPost = \slug -> Navigate (BlogPost slug)
+    , onToggleTheme = ToggleTheme
+    , onToggleMotion = ToggleMotion
+    , theme = theme
+    , motionPlaying = motionPlaying
+    , currentYear = currentYear
+    }
+
+
+viewBlogIndexLazy : Theme -> Bool -> String -> Blog.Model -> Html Msg
+viewBlogIndexLazy theme motionPlaying currentYear blog =
+    Blog.viewIndex (makeBlogConfig theme motionPlaying currentYear) blog
+
+
+viewBlogPostLazy : Theme -> Bool -> String -> Blog.Model -> String -> Html Msg
+viewBlogPostLazy theme motionPlaying currentYear blog slug =
+    Blog.viewPost (makeBlogConfig theme motionPlaying currentYear) blog slug
+
+
+viewDesktopTocWingLazy : Bool -> Theme -> BayerMask.Model -> Blog.Model -> Maybe String -> Html Msg
+viewDesktopTocWingLazy wingOpen theme bayerMask blog wingSlug =
+    Blog.viewDesktopTocWing
+        (makeBlogConfig theme True "")
+        wingOpen
+        (BayerMask.sheetBackgroundColorStyle theme bayerMask)
+        (Lazy.lazy2 BayerMask.viewOverlay theme bayerMask)
+        blog
+        wingSlug
+
+
+viewMobileTocOverlayLazy : Blog.Model -> String -> Html Msg
+viewMobileTocOverlayLazy blog slug =
+    Blog.viewMobileTocOverlay (makeBlogConfig Dark True "") blog slug
+
+
+viewEdgeBlurTop : () -> Html Msg
+viewEdgeBlurTop _ =
+    div
+        [ Attr.id "sheet-blur-top"
+        , Attr.attribute "aria-hidden" "true"
+        , Attr.class "pointer-events-none select-none absolute inset-x-0 top-0 h-16 sm:h-20 z-20 sheet-squircle-shape pblur sheet-edge-blur"
+        ]
+        [ Html.node "i" [] [], Html.node "i" [] [] ]
+
+
+viewEdgeBlurBottom : () -> Html Msg
+viewEdgeBlurBottom _ =
+    div
+        [ Attr.id "sheet-blur-bottom"
+        , Attr.attribute "aria-hidden" "true"
+        , Attr.class "pointer-events-none select-none absolute inset-x-0 bottom-0 h-20 z-20 pblur pblur-bottom sheet-edge-blur-bottom"
+        ]
+        [ Html.node "i" [] [], Html.node "i" [] [] ]
+
+
 view : Model -> Browser.Document Msg
 view model =
-    { title = "Alaa El-Samouly (Samouly) | Software Engineer at Charm"
+    { title =
+        case model.route of
+            Home ->
+                "Alaa El-Samouly (Samouly) | Software Engineer at Charm"
+
+            BlogIndex ->
+                "Writing | Alaa El-Samouly (Samouly)"
+
+            BlogPost slug ->
+                case Blog.findBySlug slug model.blog of
+                    Just post ->
+                        post.title ++ " | Samouly"
+
+                    Nothing ->
+                        "Post not found | Samouly"
     , body =
         [ div
             [ Attr.class "fixed inset-0 h-dvh bg-transparent text-[var(--page-fg)] flex flex-col items-center overflow-hidden px-3 sm:px-6 select-none" ]
@@ -348,31 +691,81 @@ view model =
                 ]
                 [ text "Skip to Content" ]
             , div
-                ([ Attr.id "content-sheet"
-                 , Attr.attribute "data-grainient-shield" "true"
-                 , Attr.class "sheet-squircle select-text relative z-10 mt-14 sm:mt-16 w-full max-w-[50rem] flex-1 min-h-0 flex flex-col bg-[var(--page-bg)] shadow-[var(--sheet-shadow)] overflow-hidden"
-                 ]
-                    ++ BayerMask.sheetBackgroundStyle model.theme model.bayerMask
-                )
+                [ Attr.class "relative z-10 mt-14 sm:mt-16 w-full max-w-[50rem] flex-1 min-h-0 flex flex-col" ]
                 [ div
-                    [ Attr.id "dither-stage"
-                    , Attr.class "scroll-clean flex-1 min-h-0 overflow-x-hidden overflow-y-auto flex flex-col justify-between"
-                    ]
-                    [ main_
-                        [ Attr.id "main-content"
-                        , Attr.tabindex -1
-                        , Attr.class ("relative z-20 pointer-events-none w-full pl-5 pr-7 sm:px-10 pt-5 sm:pt-7 pb-3 flex-1 flex flex-col justify-start " ++ focusRing)
+                    ([ Attr.attribute "aria-hidden" "true"
+                     , Attr.class "pointer-events-none absolute inset-0 z-0 sheet-squircle shadow-[var(--sheet-outer-shadow)]"
+                     ]
+                        ++ BayerMask.sheetDropShadowStyle model.bayerMask
+                    )
+                    []
+                , let
+                    wingOpen =
+                        case ( model.route, model.pendingRoute ) of
+                            ( BlogPost _, Just Home ) ->
+                                False
+
+                            ( BlogPost _, Just BlogIndex ) ->
+                                False
+
+                            ( BlogPost _, _ ) ->
+                                True
+
+                            _ ->
+                                False
+
+                    wingSlug =
+                        case model.route of
+                            BlogPost slug ->
+                                Just slug
+
+                            _ ->
+                                model.lastPostSlug
+                  in
+                  Lazy.lazy5 viewDesktopTocWingLazy wingOpen model.theme model.bayerMask model.blog wingSlug
+                , div
+                    ([ Attr.id "content-sheet"
+                     , Attr.attribute "data-grainient-shield" "true"
+                     , Attr.class "sheet-squircle select-text relative z-10 w-full flex-1 min-h-0 flex flex-col bg-[var(--page-bg)] shadow-[var(--sheet-inset)]"
+                     ]
+                        ++ BayerMask.sheetBackgroundStyle model.theme model.bayerMask
+                    )
+                    [ div
+                        [ Attr.id "dither-stage"
+                        , Attr.class "scroll-clean relative z-0 flex-1 min-h-0 rounded-t-[2.4rem] overflow-x-hidden overflow-y-auto flex flex-col justify-between"
                         ]
-                        [ div [ Attr.class "flex flex-col pointer-events-auto" ]
-                            [ Lazy.lazy3 viewAbout model.flags.diveDepthMeters model.theme model.ditherTop
-                            , Lazy.lazy viewWork ()
-                            , Lazy.lazy4 viewContact model.flags.currentYear model.theme model.motionPlaying model.copyState
+                        [ main_
+                            [ Attr.id "main-content"
+                            , Attr.tabindex -1
+                            , Attr.class ("relative z-20 pointer-events-none w-full pl-5 pr-7 sm:px-10 pt-5 sm:pt-7 pb-3 flex-1 flex flex-col justify-start " ++ focusRing)
                             ]
+                            [ case model.route of
+                                Home ->
+                                    div [ Attr.class "flex flex-col pointer-events-auto" ]
+                                        [ Lazy.lazy3 viewAbout model.flags.diveDepthMeters model.theme model.ditherTop
+                                        , Lazy.lazy viewWork ()
+                                        , Lazy.lazy4 viewContact model.flags.currentYear model.theme model.motionPlaying model.copyState
+                                        ]
+
+                                BlogIndex ->
+                                    Lazy.lazy4 viewBlogIndexLazy model.theme model.motionPlaying model.flags.currentYear model.blog
+
+                                BlogPost slug ->
+                                    Lazy.lazy5 viewBlogPostLazy model.theme model.motionPlaying model.flags.currentYear model.blog slug
+                            ]
+                        , Lazy.lazy2 viewFooter model.theme model.ditherFooter
                         ]
-                    , Lazy.lazy2 viewFooter model.theme model.ditherFooter
+                    , case model.route of
+                        BlogPost slug ->
+                            Lazy.lazy2 viewMobileTocOverlayLazy model.blog slug
+
+                        _ ->
+                            text ""
+                    , Lazy.lazy viewEdgeBlurTop ()
+                    , Lazy.lazy viewEdgeBlurBottom ()
+                    , Lazy.lazy2 BayerMask.viewOverlay model.theme model.bayerMask
+                    , Lazy.lazy viewScrollTrack ()
                     ]
-                , Lazy.lazy2 BayerMask.viewOverlay model.theme model.bayerMask
-                , Lazy.lazy viewScrollTrack ()
                 ]
             , div
                 [ Attr.attribute "aria-live" "polite"
@@ -410,16 +803,17 @@ viewVerticalLabel : String -> Html msg
 viewVerticalLabel labelText =
     div [ Attr.class "flex flex-col items-start shrink-0" ]
         [ div
-            [ Attr.class "inline-flex flex-col items-stretch w-6 sm:w-7"
+            [ Attr.class "inline-flex sm:flex-col items-stretch h-5 sm:h-auto sm:w-7"
             , Attr.style "color" "var(--tab-bg)"
             ]
-            [ ditherCapSvg
+            [ div [ Attr.class "hidden sm:block" ] [ ditherCapSvg ]
             , span
-                [ Attr.class "font-mono text-[9px] sm:text-[10px] uppercase tracking-[0.18em] py-2 sm:py-2.5 flex items-center justify-center leading-none"
+                [ Attr.class "font-mono text-[10px] tracking-[0.14em] px-2 sm:px-0 sm:py-2.5 flex items-center justify-center leading-none"
                 , Attr.style "background-color" "var(--tab-bg)"
                 , Attr.style "color" "var(--tab-fg)"
                 ]
-                [ span [ Attr.class "vertical-heading" ] [ text labelText ] ]
+                [ span [ Attr.class "sm:vertical-heading" ] [ text labelText ] ]
+            , div [ Attr.class "sm:hidden flex items-stretch" ] [ ditherTailSvg ]
             ]
         ]
 
@@ -428,18 +822,52 @@ viewVerticalHeading : String -> String -> Html msg
 viewVerticalHeading headingId labelText =
     div [ Attr.class "flex flex-col items-start shrink-0" ]
         [ div
-            [ Attr.class "inline-flex flex-col items-stretch w-6 sm:w-7"
+            [ Attr.class "inline-flex sm:flex-col items-stretch h-5 sm:h-auto sm:w-7"
             , Attr.style "color" "var(--tab-bg)"
             ]
-            [ ditherCapSvg
+            [ div [ Attr.class "hidden sm:block" ] [ ditherCapSvg ]
             , h2
                 [ Attr.id headingId
-                , Attr.class "font-mono text-[9px] sm:text-[10px] uppercase tracking-[0.18em] py-2 sm:py-2.5 flex items-center justify-center leading-none"
+                , Attr.class "font-mono text-[10px] tracking-[0.14em] px-2 sm:px-0 sm:py-2.5 flex items-center justify-center leading-none"
                 , Attr.style "background-color" "var(--tab-bg)"
                 , Attr.style "color" "var(--tab-fg)"
                 ]
-                [ span [ Attr.class "vertical-heading" ] [ text labelText ] ]
+                [ span [ Attr.class "sm:vertical-heading" ] [ text labelText ] ]
+            , div [ Attr.class "sm:hidden flex items-stretch" ] [ ditherTailSvg ]
             ]
+        ]
+
+
+ditherTailSvg : Html msg
+ditherTailSvg =
+    svg
+        [ SvgAttr.viewBox "0 0 8 8"
+        , SvgAttr.preserveAspectRatio "none"
+        , SvgAttr.class "block w-2.5 h-full -ml-px shrink-0"
+        , Attr.attribute "shape-rendering" "crispEdges"
+        , Attr.attribute "aria-hidden" "true"
+        , Attr.attribute "focusable" "false"
+        ]
+        [ rect [ SvgAttr.x "0", SvgAttr.y "0", SvgAttr.width "1", SvgAttr.height "8", SvgAttr.fill "currentColor" ] []
+        , rect [ SvgAttr.x "1", SvgAttr.y "0", SvgAttr.width "1", SvgAttr.height "2", SvgAttr.fill "currentColor" ] []
+        , rect [ SvgAttr.x "1", SvgAttr.y "3", SvgAttr.width "1", SvgAttr.height "3", SvgAttr.fill "currentColor" ] []
+        , rect [ SvgAttr.x "1", SvgAttr.y "7", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
+        , rect [ SvgAttr.x "2", SvgAttr.y "1", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
+        , rect [ SvgAttr.x "2", SvgAttr.y "3", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
+        , rect [ SvgAttr.x "2", SvgAttr.y "5", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
+        , rect [ SvgAttr.x "2", SvgAttr.y "7", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
+        , rect [ SvgAttr.x "3", SvgAttr.y "0", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
+        , rect [ SvgAttr.x "3", SvgAttr.y "2", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
+        , rect [ SvgAttr.x "3", SvgAttr.y "4", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
+        , rect [ SvgAttr.x "3", SvgAttr.y "6", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
+        , rect [ SvgAttr.x "4", SvgAttr.y "1", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
+        , rect [ SvgAttr.x "4", SvgAttr.y "5", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
+        , rect [ SvgAttr.x "5", SvgAttr.y "3", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
+        , rect [ SvgAttr.x "5", SvgAttr.y "7", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
+        , rect [ SvgAttr.x "6", SvgAttr.y "0", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
+        , rect [ SvgAttr.x "6", SvgAttr.y "4", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
+        , rect [ SvgAttr.x "7", SvgAttr.y "2", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
+        , rect [ SvgAttr.x "7", SvgAttr.y "6", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
         ]
 
 
@@ -497,10 +925,10 @@ viewAbout diveDepthMeters theme ditherTopModel =
     section
         [ Attr.id "about"
         , Attr.attribute "aria-labelledby" "about-heading"
-        , Attr.class "scroll-mt-8 grid grid-cols-[1.5rem_1fr] sm:grid-cols-[2.75rem_1fr] gap-x-4 sm:gap-x-6 items-start"
+        , Attr.class "scroll-mt-8 flex flex-col gap-y-3 sm:grid sm:grid-cols-[2.75rem_1fr] sm:gap-x-6 sm:items-start"
         ]
         [ Lazy.lazy viewVerticalLabel "About"
-        , div [ Attr.class "min-w-0 grid grid-cols-[1fr_auto] gap-x-4 sm:gap-x-5 items-center sm:items-start" ]
+        , div [ Attr.class "min-w-0 grid grid-cols-[1fr_auto] gap-x-4 sm:gap-x-5 items-start" ]
             [ Lazy.lazy viewAboutHeader ()
             , div [ Attr.class "col-start-2 row-start-1 sm:row-span-2 shrink-0" ]
                 [ Lazy.lazy2 DitherTop.view theme ditherTopModel |> Html.map TopDitherMsg ]
@@ -561,7 +989,7 @@ viewWork _ =
     section
         [ Attr.id "work"
         , Attr.attribute "aria-labelledby" "work-heading"
-        , Attr.class "scroll-mt-8 mt-24 sm:mt-24 grid grid-cols-[1.5rem_1fr] sm:grid-cols-[2.75rem_1fr] gap-x-4 sm:gap-x-6 items-start"
+        , Attr.class "scroll-mt-8 mt-14 sm:mt-24 flex flex-col gap-y-3 sm:grid sm:grid-cols-[2.75rem_1fr] sm:gap-x-6 sm:items-start"
         ]
         [ viewVerticalHeading "work-heading" "Work"
         , ul [ Attr.class "group/work min-w-0 divide-y divide-[var(--page-line)]" ]
@@ -615,7 +1043,7 @@ viewContact currentYear theme motionPlaying copyState =
     section
         [ Attr.id "contact"
         , Attr.attribute "aria-labelledby" "contact-heading"
-        , Attr.class "scroll-mt-8 mt-6 sm:mt-8 grid grid-cols-[1.5rem_1fr] sm:grid-cols-[2.75rem_1fr] gap-x-4 sm:gap-x-6 items-start"
+        , Attr.class "scroll-mt-8 mt-12 sm:mt-8 flex flex-col gap-y-3 sm:grid sm:grid-cols-[2.75rem_1fr] sm:gap-x-6 sm:items-start"
         ]
         [ viewVerticalHeading "contact-heading" "Contact"
         , div [ Attr.class "min-w-0 pt-0.5 space-y-3" ]
@@ -661,7 +1089,16 @@ viewContact currentYear theme motionPlaying copyState =
                 , div [ Attr.class "flex flex-wrap items-center gap-x-4 font-mono text-xs" ]
                     [ viewSocialLink "GitHub" "https://github.com/sam0uly"
                     , viewSocialLink "X" "https://x.com/sam0uly"
-                    , viewSocialLink "Blog" "https://samouly.fun/blog"
+                    , a
+                        [ Attr.href "/blog"
+                        , onInternalLinkClick (Navigate BlogIndex)
+                        , Attr.attribute "translate" "no"
+                        , Attr.class
+                            ("inline-flex items-center min-h-11 sm:min-h-8 text-[var(--page-muted)] transition-colors duration-150 hover:text-[var(--page-fg)] rounded-xs "
+                                ++ focusRing
+                            )
+                        ]
+                        [ text "Blog" ]
                     , viewSocialLink "Charm" "https://charm.land"
                     ]
                 ]
@@ -742,7 +1179,7 @@ viewSocialLink labelText hrefUrl =
 
 viewFooter : Theme -> DitherFooter.Model -> Html Msg
 viewFooter theme ditherFooterModel =
-    footer [ Attr.class "relative z-10 w-full -mt-4 sm:-mt-20 pointer-events-none" ]
+    footer [ Attr.id "dither-footer", Attr.class "relative z-10 w-full -mt-4 sm:-mt-20 pointer-events-none" ]
         [ div [ Attr.class "pointer-events-auto" ]
             [ DitherFooter.view theme ditherFooterModel |> Html.map FooterDitherMsg ]
         ]
