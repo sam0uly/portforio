@@ -6,6 +6,7 @@ module BayerMask exposing
     , sheetBackgroundColorStyle
     , sheetBackgroundStyle
     , sheetDropShadowStyle
+    , sheetTintColorStyle
     , startRouteSwitch
     , startThemeSwitch
     , tick
@@ -352,25 +353,44 @@ insetShadowStyle maybeShadow =
             [ Attr.style "box-shadow" ("0 -1px 0 0 rgba(255, 255, 255, " ++ fmtAlpha insetAlpha ++ ") inset") ]
 
 
+sheetTintColorStyle : Theme -> Model -> List (Attribute msg)
+sheetTintColorStyle currentTheme model =
+    case model.phase of
+        ThemeOut _ _ _ ->
+            [ Attr.style "color" (sheetBgRgb currentTheme model) ]
+
+        ThemeIn _ _ _ ->
+            [ Attr.style "color" (sheetBgRgb currentTheme model) ]
+
+        _ ->
+            []
+
+
+sheetBgRgb : Theme -> Model -> String
+sheetBgRgb currentTheme model =
+    let
+        mixVal =
+            currentBgLight currentTheme model
+
+        r =
+            round (5 + (245 - 5) * mixVal)
+
+        g =
+            round (5 + (244 - 5) * mixVal)
+
+        b =
+            round (5 + (240 - 5) * mixVal)
+    in
+    "rgb(" ++ String.fromInt r ++ ", " ++ String.fromInt g ++ ", " ++ String.fromInt b ++ ")"
+
+
 sheetBackgroundColorStyle : Theme -> Model -> List (Attribute msg)
 sheetBackgroundColorStyle currentTheme model =
     case model.phase of
         ThemeOut _ _ _ ->
             let
-                mixVal =
-                    currentBgLight currentTheme model
-
-                r =
-                    round (5 + (245 - 5) * mixVal)
-
-                g =
-                    round (5 + (244 - 5) * mixVal)
-
-                b =
-                    round (5 + (240 - 5) * mixVal)
-
                 rgbStr =
-                    "rgb(" ++ String.fromInt r ++ ", " ++ String.fromInt g ++ ", " ++ String.fromInt b ++ ")"
+                    sheetBgRgb currentTheme model
             in
             [ Attr.style "background-color" rgbStr
             , Attr.style "color" rgbStr
@@ -378,20 +398,8 @@ sheetBackgroundColorStyle currentTheme model =
 
         ThemeIn _ _ _ ->
             let
-                mixVal =
-                    currentBgLight currentTheme model
-
-                r =
-                    round (5 + (245 - 5) * mixVal)
-
-                g =
-                    round (5 + (244 - 5) * mixVal)
-
-                b =
-                    round (5 + (240 - 5) * mixVal)
-
                 rgbStr =
-                    "rgb(" ++ String.fromInt r ++ ", " ++ String.fromInt g ++ ", " ++ String.fromInt b ++ ")"
+                    sheetBgRgb currentTheme model
             in
             [ Attr.style "background-color" rgbStr
             , Attr.style "color" rgbStr
@@ -512,7 +520,7 @@ renderShader bgLight progress mode =
         , Attr.height 440
         , Attr.attribute "aria-hidden" "true"
         , Attr.style "corner-shape" "inherit"
-        , Attr.class "absolute inset-0 z-40 block w-full h-full rounded-[inherit] pixel-crisp pointer-events-none select-none"
+        , Attr.class "absolute inset-0 z-[15] block w-full h-full rounded-[inherit] pixel-crisp pointer-events-none select-none"
         ]
         [ WebGL.entity
             vertexShader

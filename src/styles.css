@@ -144,6 +144,7 @@
 
 .pblur {
   --pblur-dir: to top;
+  color: var(--page-bg);
   -webkit-user-select: none;
   user-select: none;
 }
@@ -192,9 +193,9 @@
   background: linear-gradient(
     var(--pblur-dir),
     transparent 0%,
-    color-mix(in srgb, var(--page-bg) 68%, transparent) 52%,
-    var(--page-bg) 78%,
-    var(--page-bg) 100%
+    color-mix(in srgb, currentColor 68%, transparent) 52%,
+    currentColor 78%,
+    currentColor 100%
   );
 }
 
@@ -222,10 +223,10 @@
 .pblur-toc-open::after {
   background: linear-gradient(
     to bottom,
-    var(--page-bg) 0%,
-    var(--page-bg) 8%,
-    color-mix(in srgb, var(--page-bg) 84%, transparent) 18%,
-    color-mix(in srgb, var(--page-bg) 84%, transparent) 84%,
+    currentColor 0%,
+    currentColor 8%,
+    color-mix(in srgb, currentColor 84%, transparent) 18%,
+    color-mix(in srgb, currentColor 84%, transparent) 84%,
     transparent 100%
   );
 }
