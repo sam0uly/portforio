@@ -175,7 +175,7 @@ Go community is very good and helpful and creates alot of OSS projects while kee
 
 Seeeeeigh there is alot here but i will put books libraries:
 
-- [The Go Programming Language](http://www.cs.uniroma2.it/upload/2017/TSC/The%20Go%20Programming%20Language.pdf): the is like official book but its not, and its very good.
+- [The Go Programming Language](http://www.cs.uniroma2.it/upload/2017/TSC/The%20Go%20Programming%20Language.pdf): this is like the official book but its not, and its very good.
 - [Awesome Go books](https://github.com/dariubs/GoBooks): GoBooks is a curated collection of the best Go books for developers at every level—from beginners to engineers working on concurrency, performance, and system design. One place to find the right learning resource.
 - [Go Wiki books](https://go.dev/wiki/Books): the official list of books by `go.dev`.
 
