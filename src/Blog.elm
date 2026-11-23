@@ -1211,28 +1211,28 @@ viewBlock toMsg theme copiedCode copiedHeading block =
 
         Callout variant blocks ->
             let
-                label =
+                ( label, badgeBg, badgeFg ) =
                     case String.toLower variant of
                         "warning" ->
-                            "Warning"
+                            ( "Warning", "var(--callout-warn-bg)", "var(--callout-warn-fg)" )
 
                         "tip" ->
-                            "Tip"
+                            ( "Tip", "var(--callout-tip-bg)", "var(--callout-tip-fg)" )
 
                         _ ->
-                            "Note"
+                            ( "Note", "var(--callout-note-bg)", "var(--callout-note-fg)" )
             in
-            div [ Attr.class "my-5 box-squircle bg-[var(--tab-bg)]/70 px-4 py-3.5 sm:px-5 sm:py-4 space-y-2" ]
-                (span [ Attr.class "inline-flex items-stretch h-[18px] font-mono text-[9.5px] uppercase tracking-[0.16em]" ]
+            div [ Attr.class "my-5 box-squircle bg-[var(--tab-bg)]/55 px-4 py-3.5 sm:px-5 sm:py-4 space-y-2" ]
+                (span [ Attr.class "inline-flex items-stretch h-[20px] font-mono text-[9.5px] font-medium uppercase tracking-[0.16em]" ]
                     [ span
-                        [ Attr.class "inline-flex items-center pl-1.5 pr-1 leading-none"
-                        , Attr.style "background-color" "var(--page-fg)"
-                        , Attr.style "color" "var(--page-bg)"
+                        [ Attr.class "inline-flex items-center pl-2 pr-1.5 leading-none"
+                        , Attr.style "background-color" badgeBg
+                        , Attr.style "color" badgeFg
                         ]
                         [ text label ]
                     , span
                         [ Attr.class "inline-flex items-stretch"
-                        , Attr.style "color" "var(--page-fg)"
+                        , Attr.style "color" badgeBg
                         ]
                         [ ditherTailSvg ]
                     ]
@@ -1878,33 +1878,25 @@ ditherHeaderDividerSvg =
 ditherTailSvg : Html msg
 ditherTailSvg =
     svg
-        [ SvgAttr.viewBox "0 0 8 8"
+        [ SvgAttr.viewBox "0 0 6 6"
         , SvgAttr.preserveAspectRatio "none"
-        , SvgAttr.class "block w-2.5 h-full -ml-px shrink-0"
+        , SvgAttr.class "block w-4 h-full -ml-px shrink-0"
         , Attr.attribute "shape-rendering" "crispEdges"
         , Attr.attribute "aria-hidden" "true"
         , Attr.attribute "focusable" "false"
         ]
-        [ rect [ SvgAttr.x "0", SvgAttr.y "0", SvgAttr.width "1", SvgAttr.height "8", SvgAttr.fill "currentColor" ] []
+        [ rect [ SvgAttr.x "0", SvgAttr.y "0", SvgAttr.width "1", SvgAttr.height "6", SvgAttr.fill "currentColor" ] []
         , rect [ SvgAttr.x "1", SvgAttr.y "0", SvgAttr.width "1", SvgAttr.height "2", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "1", SvgAttr.y "3", SvgAttr.width "1", SvgAttr.height "3", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "1", SvgAttr.y "7", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
+        , rect [ SvgAttr.x "1", SvgAttr.y "3", SvgAttr.width "1", SvgAttr.height "2", SvgAttr.fill "currentColor" ] []
         , rect [ SvgAttr.x "2", SvgAttr.y "1", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
         , rect [ SvgAttr.x "2", SvgAttr.y "3", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
         , rect [ SvgAttr.x "2", SvgAttr.y "5", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "2", SvgAttr.y "7", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
         , rect [ SvgAttr.x "3", SvgAttr.y "0", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
         , rect [ SvgAttr.x "3", SvgAttr.y "2", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
         , rect [ SvgAttr.x "3", SvgAttr.y "4", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "3", SvgAttr.y "6", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
         , rect [ SvgAttr.x "4", SvgAttr.y "1", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
         , rect [ SvgAttr.x "4", SvgAttr.y "5", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
         , rect [ SvgAttr.x "5", SvgAttr.y "3", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "5", SvgAttr.y "7", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "6", SvgAttr.y "0", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "6", SvgAttr.y "4", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "7", SvgAttr.y "2", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "7", SvgAttr.y "6", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
         ]
 
 
