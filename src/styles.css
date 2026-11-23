@@ -50,7 +50,7 @@
   --sheet-border: rgba(255, 255, 255, 0.1);
   --sheet-inset: 0 -1px 0 0 rgba(255, 255, 255, 0.08) inset;
   --sheet-outer-shadow: 0 -6px 18px rgba(0, 0, 0, 0.36), 0 14px 32px rgba(0, 0, 0, 0.54);
-  --wing-outer-shadow: -8px 10px 24px rgba(0, 0, 0, 0.44);
+  --wing-shadow-color: rgba(0, 0, 0, 0.44);
   --code-bg: #0e0e13;
   --code-border: rgba(255, 255, 255, 0.08);
 }
@@ -67,7 +67,7 @@
   --sheet-border: rgba(14, 14, 18, 0.1);
   --sheet-inset: 0 -1px 0 0 rgba(255, 255, 255, 0.65) inset;
   --sheet-outer-shadow: 0 -6px 18px rgba(14, 14, 18, 0.09), 0 14px 28px rgba(14, 14, 18, 0.13);
-  --wing-outer-shadow: -8px 10px 22px rgba(14, 14, 18, 0.11);
+  --wing-shadow-color: rgba(14, 14, 18, 0.12);
   --code-bg: #ebe9e2;
   --code-border: rgba(14, 14, 18, 0.09);
 }

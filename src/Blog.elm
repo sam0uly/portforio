@@ -26,6 +26,7 @@ import Json.Decode as Decode exposing (Decoder)
 import Svg exposing (path, rect, svg)
 import Svg.Attributes as SvgAttr
 import Theme exposing (Theme(..))
+import TocWingMorph
 
 
 type alias CodeToken =
@@ -784,103 +785,159 @@ viewPostHeader config post =
         ]
 
 
-viewDesktopTocWing : ViewConfig msg -> Bool -> List (Html.Attribute msg) -> List (Html.Attribute msg) -> Html msg -> Model -> Maybe String -> Html msg
-viewDesktopTocWing config isOpen bgStyle tintStyle overlayHtml model maybeSlug =
+viewDesktopTocWing : ViewConfig msg -> Float -> List (Html.Attribute msg) -> Html msg -> Model -> Maybe String -> Html msg
+viewDesktopTocWing config morphProgress tintStyle overlayHtml model maybeSlug =
     let
         maybePost =
             maybeSlug |> Maybe.andThen (\slug -> findBySlug slug model)
 
-        visible =
-            isOpen && (maybePost |> Maybe.map (.toc >> List.isEmpty >> not) |> Maybe.withDefault False)
-    in
-    div
-        ([ Attr.attribute "data-grainient-shield" "true"
-         , Attr.attribute "aria-label" "Table of contents"
-         , Attr.attribute "aria-hidden"
-            (if visible then
-                "false"
+        hasToc =
+            maybePost |> Maybe.map (.toc >> List.isEmpty >> not) |> Maybe.withDefault False
 
-             else
-                "true"
-            )
-         , Attr.class
-            ("hidden xl:flex flex-col absolute right-full top-1/2 -translate-y-1/2 h-1/2 w-[13.5rem] z-[5] toc-wing-squircle bg-[var(--page-bg)] text-[var(--page-bg)] shadow-[var(--wing-outer-shadow)] select-text origin-right transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] "
-                ++ (if visible then
-                        "scale-x-100 scale-y-100 pointer-events-auto"
+        e =
+            if hasToc then
+                clamp 0.0 1.08 morphProgress
 
-                    else
-                        "scale-x-0 scale-y-[0.55] pointer-events-none"
-                   )
-            )
-         ]
-            ++ bgStyle
-        )
-        [ invertedCornerTop
-        , invertedCornerBottom
-        , div [ Attr.class "relative isolate flex-1 min-h-0 flex flex-col toc-wing-squircle" ]
-            [ case maybePost of
+            else
+                0.0
+
+        isVisible =
+            e > 0.002
+
+        isInteractive =
+            e > 0.7
+
+        contentAlpha =
+            clamp 0.0 1.0 ((e - 0.55) / 0.42)
+
+        slidePx =
+            (1.0 - contentAlpha) * 10.0
+
+        clipStyle =
+            case TocWingMorph.wingClipPath e of
+                Just clipVal ->
+                    [ Attr.style "clip-path" clipVal ]
+
                 Nothing ->
+                    []
+
+        pathD =
+            TocWingMorph.wingPath e
+    in
+    if not isVisible then
+        Html.text ""
+
+    else
+        div
+            ([ Attr.id "desktop-toc-wing"
+             , Attr.attribute "data-grainient-shield" "true"
+             , Attr.attribute "aria-label" "Table of contents"
+             , Attr.attribute "aria-hidden"
+                (if isInteractive then
+                    "false"
+
+                 else
+                    "true"
+                )
+             , Attr.class
+                ("hidden xl:flex flex-col absolute right-full top-1/2 -translate-y-1/2 h-[24rem] w-[216px] z-[5] text-[var(--page-bg)] select-text "
+                    ++ (if isInteractive then
+                            "pointer-events-auto"
+
+                        else
+                            "pointer-events-none"
+                       )
+                )
+             ]
+                ++ tintStyle
+            )
+            [ svg
+                [ SvgAttr.viewBox "0 0 216 432"
+                , SvgAttr.class "pointer-events-none select-none absolute left-0 -top-6 w-[216px] h-[432px] overflow-visible z-0 [filter:drop-shadow(-8px_10px_20px_var(--wing-shadow-color))]"
+                , Attr.attribute "aria-hidden" "true"
+                , Attr.attribute "focusable" "false"
+                ]
+                [ path
+                    [ SvgAttr.d pathD
+                    , SvgAttr.fill "currentColor"
+                    ]
+                    []
+                ]
+            , div
+                ([ Attr.id "toc-wing-inner"
+                 , Attr.class "relative z-10 isolate flex-1 min-h-0 flex flex-col toc-wing-squircle"
+                 , Attr.style "opacity" (String.fromFloat contentAlpha)
+                 , Attr.style "transform" ("translate3d(" ++ String.fromFloat slidePx ++ "px, 0, 0)")
+                 ]
+                    ++ clipStyle
+                )
+                [ case maybePost of
+                    Nothing ->
+                        Html.text ""
+
+                    Just post ->
+                        let
+                            activeId =
+                                if String.isEmpty model.activeHeading then
+                                    post.toc |> List.head |> Maybe.map .id |> Maybe.withDefault ""
+
+                                else
+                                    model.activeHeading
+
+                            total =
+                                List.length post.toc
+
+                            activeIdx =
+                                post.toc
+                                    |> List.indexedMap Tuple.pair
+                                    |> List.filter (\( _, item ) -> item.id == activeId)
+                                    |> List.head
+                                    |> Maybe.map (Tuple.first >> (+) 1)
+                                    |> Maybe.withDefault 1
+                        in
+                        div [ Attr.class "flex-1 min-h-0 flex flex-col px-4 pt-4 pb-3 text-[var(--page-fg)]" ]
+                            [ div [ Attr.class "flex items-center justify-between gap-x-2 mb-1.5 shrink-0" ]
+                                [ span [ Attr.class "inline-flex items-stretch h-[18px] font-mono text-[9.5px] uppercase tracking-[0.14em]" ]
+                                    [ span
+                                        [ Attr.class "inline-flex items-center pl-1.5 pr-1 leading-none"
+                                        , Attr.style "background-color" "var(--tab-bg)"
+                                        , Attr.style "color" "var(--tab-fg)"
+                                        ]
+                                        [ text "TOC" ]
+                                    , span
+                                        [ Attr.class "inline-flex items-stretch"
+                                        , Attr.style "color" "var(--tab-bg)"
+                                        ]
+                                        [ ditherTailSvg ]
+                                    ]
+                                , span [ Attr.class "font-mono text-[10px] text-[var(--page-subtle)] tabular-nums" ]
+                                    [ text (String.fromInt activeIdx ++ "/" ++ String.fromInt total) ]
+                                ]
+                            , div [ Attr.class "relative flex-1 min-h-0" ]
+                                [ nav
+                                    [ Attr.id "desktop-toc-nav"
+                                    , Attr.class "relative z-0 h-full overflow-y-hidden py-9 space-y-0.5 pr-1"
+                                    ]
+                                    (List.map (viewWingTocItem config activeId) post.toc)
+                                , div
+                                    ([ Attr.class "pointer-events-none select-none absolute inset-x-0 top-0 h-9 z-20 pblur" ]
+                                        ++ tintStyle
+                                    )
+                                    [ Html.node "i" [] [], Html.node "i" [] [] ]
+                                , div
+                                    ([ Attr.class "pointer-events-none select-none absolute inset-x-0 bottom-0 h-9 z-20 pblur pblur-bottom" ]
+                                        ++ tintStyle
+                                    )
+                                    [ Html.node "i" [] [], Html.node "i" [] [] ]
+                                ]
+                            ]
+                , if e > 0.995 then
+                    overlayHtml
+
+                  else
                     Html.text ""
-
-                Just post ->
-                    let
-                        activeId =
-                            if String.isEmpty model.activeHeading then
-                                post.toc |> List.head |> Maybe.map .id |> Maybe.withDefault ""
-
-                            else
-                                model.activeHeading
-
-                        total =
-                            List.length post.toc
-
-                        activeIdx =
-                            post.toc
-                                |> List.indexedMap Tuple.pair
-                                |> List.filter (\( _, item ) -> item.id == activeId)
-                                |> List.head
-                                |> Maybe.map (Tuple.first >> (+) 1)
-                                |> Maybe.withDefault 1
-                    in
-                    div [ Attr.class "flex-1 min-h-0 flex flex-col px-4 pt-4 pb-3 text-[var(--page-fg)]" ]
-                        [ div [ Attr.class "flex items-center justify-between gap-x-2 mb-1.5 shrink-0" ]
-                            [ span [ Attr.class "inline-flex items-stretch h-[18px] font-mono text-[9.5px] uppercase tracking-[0.14em]" ]
-                                [ span
-                                    [ Attr.class "inline-flex items-center pl-1.5 pr-1 leading-none"
-                                    , Attr.style "background-color" "var(--tab-bg)"
-                                    , Attr.style "color" "var(--tab-fg)"
-                                    ]
-                                    [ text "TOC" ]
-                                , span
-                                    [ Attr.class "inline-flex items-stretch"
-                                    , Attr.style "color" "var(--tab-bg)"
-                                    ]
-                                    [ ditherTailSvg ]
-                                ]
-                            , span [ Attr.class "font-mono text-[10px] text-[var(--page-subtle)] tabular-nums" ]
-                                [ text (String.fromInt activeIdx ++ "/" ++ String.fromInt total) ]
-                            ]
-                        , div [ Attr.class "relative flex-1 min-h-0" ]
-                            [ nav
-                                [ Attr.id "desktop-toc-nav"
-                                , Attr.class "relative z-0 h-full overflow-y-hidden py-9 space-y-0.5 pr-1"
-                                ]
-                                (List.map (viewWingTocItem config activeId) post.toc)
-                            , div
-                                ([ Attr.class "pointer-events-none select-none absolute inset-x-0 top-0 h-9 z-20 pblur" ]
-                                    ++ tintStyle
-                                )
-                                [ Html.node "i" [] [], Html.node "i" [] [] ]
-                            , div
-                                ([ Attr.class "pointer-events-none select-none absolute inset-x-0 bottom-0 h-9 z-20 pblur pblur-bottom" ]
-                                    ++ tintStyle
-                                )
-                                [ Html.node "i" [] [], Html.node "i" [] [] ]
-                            ]
-                        ]
-            , overlayHtml
+                ]
             ]
-        ]
 
 
 viewWingTocItem : ViewConfig msg -> String -> TocItem -> Html msg
@@ -1665,38 +1722,6 @@ morphCopyIcon isCopied =
                             "scale-75 rotate-12 opacity-0"
                        )
                 )
-            ]
-            []
-        ]
-
-
-invertedCornerTop : Html msg
-invertedCornerTop =
-    svg
-        [ SvgAttr.viewBox "0 0 24 24"
-        , SvgAttr.class "pointer-events-none absolute -top-6 right-0 size-6"
-        , Attr.attribute "aria-hidden" "true"
-        , Attr.attribute "focusable" "false"
-        ]
-        [ path
-            [ SvgAttr.d "M24 0 L24 24 L0 24 A24 24 0 0 0 24 0 Z"
-            , SvgAttr.fill "currentColor"
-            ]
-            []
-        ]
-
-
-invertedCornerBottom : Html msg
-invertedCornerBottom =
-    svg
-        [ SvgAttr.viewBox "0 0 24 24"
-        , SvgAttr.class "pointer-events-none absolute -bottom-6 right-0 size-6"
-        , Attr.attribute "aria-hidden" "true"
-        , Attr.attribute "focusable" "false"
-        ]
-        [ path
-            [ SvgAttr.d "M0 0 L24 0 L24 24 A24 24 0 0 0 0 0 Z"
-            , SvgAttr.fill "currentColor"
             ]
             []
         ]

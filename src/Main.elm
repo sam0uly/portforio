@@ -17,6 +17,7 @@ import Svg exposing (rect, svg)
 import Svg.Attributes as SvgAttr
 import Task
 import Theme exposing (Theme(..))
+import TocWingMorph
 
 
 port copyToClipboard : String -> Cmd msg
@@ -89,6 +90,7 @@ type alias Model =
     , theme : Theme
     , motionPlaying : Bool
     , bayerMask : BayerMask.Model
+    , tocWing : TocWingMorph.Model
     , ditherTop : DitherTop.Model
     , ditherFooter : DitherFooter.Model
     , footerVisible : Bool
@@ -284,6 +286,16 @@ init rawFlags =
       , theme = Dark
       , motionPlaying = not decodedFlags.prefersReducedMotion
       , bayerMask = BayerMask.init decodedFlags.prefersReducedMotion
+      , tocWing =
+            TocWingMorph.init
+                decodedFlags.prefersReducedMotion
+                (case initialRoute of
+                    BlogPost _ ->
+                        True
+
+                    _ ->
+                        False
+                )
       , ditherTop = topModel
       , ditherFooter = DitherFooter.init decodedFlags.prefersReducedMotion
       , footerVisible = True
@@ -303,6 +315,7 @@ subscriptions model =
 
         needsFrames =
             BayerMask.isAnimating model.bayerMask
+                || TocWingMorph.isAnimating model.tocWing
                 || (onHome && (model.motionPlaying || DitherTop.isAnimating model.ditherTop))
                 || (model.footerVisible && DitherFooter.isAnimating model.ditherFooter)
     in
@@ -408,6 +421,28 @@ update msg model =
 
                         _ ->
                             model.lastPostSlug
+
+                shouldWingOpen =
+                    case ( nextRoute, nextPending ) of
+                        ( BlogPost _, Just Home ) ->
+                            False
+
+                        ( BlogPost _, Just BlogIndex ) ->
+                            False
+
+                        ( BlogPost _, _ ) ->
+                            True
+
+                        ( _, Just (BlogPost _) ) ->
+                            True
+
+                        _ ->
+                            False
+
+                nextTocWing =
+                    model.tocWing
+                        |> TocWingMorph.setOpen model.flags.prefersReducedMotion shouldWingOpen
+                        |> TocWingMorph.tick dtMs
             in
             ( { model
                 | theme = nextTheme
@@ -415,6 +450,7 @@ update msg model =
                 , pendingRoute = nextPending
                 , lastPostSlug = nextLastSlug
                 , bayerMask = nextMask
+                , tocWing = nextTocWing
                 , ditherTop =
                     if model.route == Home then
                         DitherTop.tick model.motionPlaying dtMs model.ditherTop
@@ -560,6 +596,17 @@ startNavigation shouldPush target model =
 
             ( nextMask, immediate ) =
                 BayerMask.startRouteSwitch model.flags.prefersReducedMotion model.bayerMask
+
+            targetIsPost =
+                case target of
+                    BlogPost _ ->
+                        True
+
+                    _ ->
+                        False
+
+            nextWing =
+                TocWingMorph.setOpen model.flags.prefersReducedMotion targetIsPost model.tocWing
         in
         if immediate then
             ( { model
@@ -573,6 +620,7 @@ startNavigation shouldPush target model =
                         _ ->
                             model.lastPostSlug
                 , bayerMask = nextMask
+                , tocWing = nextWing
                 , liveAnnouncement = announcement
               }
             , Cmd.batch [ pushCmd, resetScroll () ]
@@ -582,6 +630,7 @@ startNavigation shouldPush target model =
             ( { model
                 | pendingRoute = Just target
                 , bayerMask = nextMask
+                , tocWing = nextWing
                 , liveAnnouncement = announcement
               }
             , pushCmd
@@ -636,14 +685,18 @@ viewBlogPostLazy theme motionPlaying currentYear blog slug =
     Blog.viewPost (makeBlogConfig theme motionPlaying currentYear) blog slug
 
 
-viewDesktopTocWingLazy : Bool -> Theme -> BayerMask.Model -> Blog.Model -> Maybe String -> Html Msg
-viewDesktopTocWingLazy wingOpen theme bayerMask blog wingSlug =
+viewDesktopTocWingLazy : Bool -> Float -> Theme -> BayerMask.Model -> Blog.Model -> Maybe String -> Html Msg
+viewDesktopTocWingLazy wingMoving morphProgress theme bayerMask blog wingSlug =
     Blog.viewDesktopTocWing
         (makeBlogConfig theme True "")
-        wingOpen
-        (BayerMask.sheetBackgroundColorStyle theme bayerMask)
+        morphProgress
         (BayerMask.sheetTintColorStyle theme bayerMask)
-        (Lazy.lazy2 BayerMask.viewOverlay theme bayerMask)
+        (if wingMoving then
+            text ""
+
+         else
+            Lazy.lazy2 BayerMask.viewOverlay theme bayerMask
+        )
         blog
         wingSlug
 
@@ -720,29 +773,18 @@ view model =
                     )
                     []
                 , let
-                    wingOpen =
-                        case ( model.route, model.pendingRoute ) of
-                            ( BlogPost _, Just Home ) ->
-                                False
-
-                            ( BlogPost _, Just BlogIndex ) ->
-                                False
-
-                            ( BlogPost _, _ ) ->
-                                True
-
-                            _ ->
-                                False
-
                     wingSlug =
-                        case model.route of
-                            BlogPost slug ->
+                        case ( model.route, model.pendingRoute ) of
+                            ( BlogPost slug, _ ) ->
+                                Just slug
+
+                            ( _, Just (BlogPost slug) ) ->
                                 Just slug
 
                             _ ->
                                 model.lastPostSlug
                   in
-                  Lazy.lazy5 viewDesktopTocWingLazy wingOpen model.theme model.bayerMask model.blog wingSlug
+                  Lazy.lazy6 viewDesktopTocWingLazy (TocWingMorph.isAnimating model.tocWing) (TocWingMorph.progress model.tocWing) model.theme model.bayerMask model.blog wingSlug
                 , div
                     ([ Attr.id "content-sheet"
                      , Attr.attribute "data-grainient-shield" "true"
