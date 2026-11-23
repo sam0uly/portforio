@@ -1,8 +1,12 @@
 module BayerMask exposing
     ( Model
+    , TickEvent(..)
     , init
     , isAnimating
+    , sheetBackgroundColorStyle
     , sheetBackgroundStyle
+    , sheetDropShadowStyle
+    , startRouteSwitch
     , startThemeSwitch
     , tick
     , viewOverlay
@@ -15,11 +19,19 @@ import Theme exposing (Theme(..))
 import WebGL exposing (Mesh, Shader)
 
 
+type TickEvent
+    = NoEvent
+    | SwapTheme Theme
+    | SwapRoute
+
+
 type Phase
     = Idle
     | IntroReveal Float
     | ThemeOut Float Theme Theme
     | ThemeIn Float Theme Theme
+    | RouteOut Float
+    | RouteIn Float
 
 
 type alias ShadowAnim =
@@ -48,6 +60,16 @@ outMs =
 inMs : Float
 inMs =
     350
+
+
+routeOutMs : Float
+routeOutMs =
+    240
+
+
+routeInMs : Float
+routeInMs =
+    280
 
 
 shadowMs : Float
@@ -86,6 +108,15 @@ startThemeSwitch prefersReduced fromTheme targetTheme model =
         )
 
 
+startRouteSwitch : Bool -> Model -> ( Model, Bool )
+startRouteSwitch prefersReduced model =
+    if prefersReduced then
+        ( { model | phase = Idle }, True )
+
+    else
+        ( { model | phase = RouteOut 0 }, False )
+
+
 tickShadow : Float -> Maybe ShadowAnim -> Maybe ShadowAnim
 tickShadow dtMs maybeShadow =
     case maybeShadow of
@@ -104,7 +135,7 @@ tickShadow dtMs maybeShadow =
                 Just { anim | elapsed = next }
 
 
-tick : Float -> Model -> ( Model, Maybe Theme )
+tick : Float -> Model -> ( Model, TickEvent )
 tick dtMs model =
     let
         nextShadow =
@@ -112,7 +143,7 @@ tick dtMs model =
     in
     case model.phase of
         Idle ->
-            ( { model | shadow = nextShadow }, Nothing )
+            ( { model | shadow = nextShadow }, NoEvent )
 
         IntroReveal elapsed ->
             let
@@ -120,10 +151,10 @@ tick dtMs model =
                     elapsed + min 50 dtMs
             in
             if next >= introDurationMs then
-                ( { model | phase = Idle, shadow = nextShadow }, Nothing )
+                ( { model | phase = Idle, shadow = nextShadow }, NoEvent )
 
             else
-                ( { model | phase = IntroReveal next, shadow = nextShadow }, Nothing )
+                ( { model | phase = IntroReveal next, shadow = nextShadow }, NoEvent )
 
         ThemeOut elapsed fromTheme targetTheme ->
             let
@@ -132,12 +163,12 @@ tick dtMs model =
             in
             if next >= outMs then
                 ( { model | phase = ThemeIn 0 fromTheme targetTheme, shadow = nextShadow }
-                , Just targetTheme
+                , SwapTheme targetTheme
                 )
 
             else
                 ( { model | phase = ThemeOut next fromTheme targetTheme, shadow = nextShadow }
-                , Nothing
+                , NoEvent
                 )
 
         ThemeIn elapsed fromTheme targetTheme ->
@@ -146,10 +177,32 @@ tick dtMs model =
                     elapsed + min 50 dtMs
             in
             if next >= inMs then
-                ( { model | phase = Idle, shadow = nextShadow }, Nothing )
+                ( { model | phase = Idle, shadow = nextShadow }, NoEvent )
 
             else
-                ( { model | phase = ThemeIn next fromTheme targetTheme, shadow = nextShadow }, Nothing )
+                ( { model | phase = ThemeIn next fromTheme targetTheme, shadow = nextShadow }, NoEvent )
+
+        RouteOut elapsed ->
+            let
+                next =
+                    elapsed + min 50 dtMs
+            in
+            if next >= routeOutMs then
+                ( { model | phase = RouteIn 0, shadow = nextShadow }, SwapRoute )
+
+            else
+                ( { model | phase = RouteOut next, shadow = nextShadow }, NoEvent )
+
+        RouteIn elapsed ->
+            let
+                next =
+                    elapsed + min 50 dtMs
+            in
+            if next >= routeInMs then
+                ( { model | phase = Idle, shadow = nextShadow }, NoEvent )
+
+            else
+                ( { model | phase = RouteIn next, shadow = nextShadow }, NoEvent )
 
 
 currentBgLight : Theme -> Model -> Float
@@ -159,6 +212,12 @@ currentBgLight currentTheme model =
             Theme.isLightFloat currentTheme
 
         IntroReveal _ ->
+            Theme.isLightFloat currentTheme
+
+        RouteOut _ ->
+            Theme.isLightFloat currentTheme
+
+        RouteIn _ ->
             Theme.isLightFloat currentTheme
 
         ThemeOut elapsed fromTheme targetTheme ->
@@ -197,9 +256,9 @@ fmtAlpha val =
     String.fromFloat (toFloat (round (clamp 0 1 val * 1000)) / 1000)
 
 
-shadowStyle : Maybe ShadowAnim -> List (Attribute msg)
-shadowStyle maybeShadow =
-    case maybeShadow of
+sheetDropShadowStyle : Model -> List (Attribute msg)
+sheetDropShadowStyle model =
+    case model.shadow of
         Nothing ->
             []
 
@@ -220,9 +279,6 @@ shadowStyle maybeShadow =
                 sizeScale =
                     1 - 0.58 * dip
 
-                insetAlpha =
-                    lerp 0.08 0.65 lightMix
-
                 r =
                     round (lerp 0 14 lightMix)
 
@@ -236,38 +292,28 @@ shadowStyle maybeShadow =
                     "rgba(" ++ String.fromInt r ++ ", " ++ String.fromInt g ++ ", " ++ String.fromInt b ++ ", "
 
                 topY =
-                    lerp -10 -12 lightMix * sizeScale
+                    -6 * sizeScale
 
                 topBlur =
-                    lerp 38 40 lightMix * sizeScale
-
-                topSpread =
-                    -12 * sizeScale
+                    14 * sizeScale
 
                 topAlpha =
-                    lerp 0.68 0.12 lightMix * (1 - 0.35 * dip)
+                    lerp 0.34 0.08 lightMix * (1 - 0.35 * dip)
 
                 botY =
-                    lerp 18 24 lightMix * sizeScale
+                    12 * sizeScale
 
                 botBlur =
-                    lerp 65 64 lightMix * sizeScale
-
-                botSpread =
-                    -16 * sizeScale
+                    lerp 24 22 lightMix * sizeScale
 
                 botAlpha =
-                    lerp 0.85 0.16 lightMix * (1 - 0.35 * dip)
+                    lerp 0.5 0.11 lightMix * (1 - 0.35 * dip)
 
                 value =
-                    "0 -1px 0 0 rgba(255, 255, 255, "
-                        ++ fmtAlpha insetAlpha
-                        ++ ") inset, 0 "
+                    "0 "
                         ++ fmtPx topY
                         ++ " "
                         ++ fmtPx topBlur
-                        ++ " "
-                        ++ fmtPx topSpread
                         ++ " "
                         ++ rgbPrefix
                         ++ fmtAlpha topAlpha
@@ -276,8 +322,6 @@ shadowStyle maybeShadow =
                         ++ " "
                         ++ fmtPx botBlur
                         ++ " "
-                        ++ fmtPx botSpread
-                        ++ " "
                         ++ rgbPrefix
                         ++ fmtAlpha botAlpha
                         ++ ")"
@@ -285,18 +329,84 @@ shadowStyle maybeShadow =
             [ Attr.style "box-shadow" value ]
 
 
+insetShadowStyle : Maybe ShadowAnim -> List (Attribute msg)
+insetShadowStyle maybeShadow =
+    case maybeShadow of
+        Nothing ->
+            []
+
+        Just anim ->
+            let
+                t =
+                    clamp 0 1 (anim.elapsed / shadowMs)
+
+                colorT =
+                    t * t * (3 - 2 * t)
+
+                lightMix =
+                    lerp (Theme.isLightFloat anim.fromTheme) (Theme.isLightFloat anim.targetTheme) colorT
+
+                insetAlpha =
+                    lerp 0.08 0.65 lightMix
+            in
+            [ Attr.style "box-shadow" ("0 -1px 0 0 rgba(255, 255, 255, " ++ fmtAlpha insetAlpha ++ ") inset") ]
+
+
+sheetBackgroundColorStyle : Theme -> Model -> List (Attribute msg)
+sheetBackgroundColorStyle currentTheme model =
+    case model.phase of
+        ThemeOut _ _ _ ->
+            let
+                mixVal =
+                    currentBgLight currentTheme model
+
+                r =
+                    round (5 + (245 - 5) * mixVal)
+
+                g =
+                    round (5 + (244 - 5) * mixVal)
+
+                b =
+                    round (5 + (240 - 5) * mixVal)
+
+                rgbStr =
+                    "rgb(" ++ String.fromInt r ++ ", " ++ String.fromInt g ++ ", " ++ String.fromInt b ++ ")"
+            in
+            [ Attr.style "background-color" rgbStr
+            , Attr.style "color" rgbStr
+            ]
+
+        ThemeIn _ _ _ ->
+            let
+                mixVal =
+                    currentBgLight currentTheme model
+
+                r =
+                    round (5 + (245 - 5) * mixVal)
+
+                g =
+                    round (5 + (244 - 5) * mixVal)
+
+                b =
+                    round (5 + (240 - 5) * mixVal)
+
+                rgbStr =
+                    "rgb(" ++ String.fromInt r ++ ", " ++ String.fromInt g ++ ", " ++ String.fromInt b ++ ")"
+            in
+            [ Attr.style "background-color" rgbStr
+            , Attr.style "color" rgbStr
+            ]
+
+        _ ->
+            []
+
+
 sheetBackgroundStyle : Theme -> Model -> List (Attribute msg)
 sheetBackgroundStyle currentTheme model =
     let
         bgStyle =
             case model.phase of
-                Idle ->
-                    []
-
-                IntroReveal _ ->
-                    []
-
-                _ ->
+                ThemeOut _ _ _ ->
                     let
                         mixVal =
                             currentBgLight currentTheme model
@@ -314,8 +424,30 @@ sheetBackgroundStyle currentTheme model =
                             "rgb(" ++ String.fromInt r ++ ", " ++ String.fromInt g ++ ", " ++ String.fromInt b ++ ")"
                     in
                     [ Attr.style "background-color" rgbStr ]
+
+                ThemeIn _ _ _ ->
+                    let
+                        mixVal =
+                            currentBgLight currentTheme model
+
+                        r =
+                            round (5 + (245 - 5) * mixVal)
+
+                        g =
+                            round (5 + (244 - 5) * mixVal)
+
+                        b =
+                            round (5 + (240 - 5) * mixVal)
+
+                        rgbStr =
+                            "rgb(" ++ String.fromInt r ++ ", " ++ String.fromInt g ++ ", " ++ String.fromInt b ++ ")"
+                    in
+                    [ Attr.style "background-color" rgbStr ]
+
+                _ ->
+                    []
     in
-    bgStyle ++ shadowStyle model.shadow
+    bgStyle ++ insetShadowStyle model.shadow
 
 
 viewOverlay : Theme -> Model -> Html msg
@@ -351,6 +483,26 @@ viewOverlay currentTheme model =
             in
             renderShader (currentBgLight currentTheme model) (1 - eased) 0.0
 
+        RouteOut elapsed ->
+            let
+                t =
+                    clamp 0 1 (elapsed / routeOutMs)
+
+                eased =
+                    t * t * (3 - 2 * t)
+            in
+            renderShader (Theme.isLightFloat currentTheme) eased 0.0
+
+        RouteIn elapsed ->
+            let
+                t =
+                    clamp 0 1 (elapsed / routeInMs)
+
+                eased =
+                    t * t * (3 - 2 * t)
+            in
+            renderShader (Theme.isLightFloat currentTheme) (1 - eased) 0.0
+
 
 renderShader : Float -> Float -> Float -> Html msg
 renderShader bgLight progress mode =
@@ -359,7 +511,8 @@ renderShader bgLight progress mode =
         [ Attr.width 400
         , Attr.height 440
         , Attr.attribute "aria-hidden" "true"
-        , Attr.class "absolute inset-0 z-40 block w-full h-full pixel-crisp pointer-events-none select-none"
+        , Attr.style "corner-shape" "inherit"
+        , Attr.class "absolute inset-0 z-40 block w-full h-full rounded-[inherit] pixel-crisp pointer-events-none select-none"
         ]
         [ WebGL.entity
             vertexShader
