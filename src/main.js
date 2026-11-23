@@ -157,7 +157,7 @@ function setupUnifiedScroll() {
   const paintEdgeBlurs = (y) => {
     const canScroll = maxScroll > 2;
     topBlurVisible = setBlurVisible(topBlur, canScroll && y > 8 && !hasMobileToc, topBlurVisible);
-    bottomBlurVisible = setBlurVisible(bottomBlur, canScroll && y < maxScroll - 16, bottomBlurVisible);
+    bottomBlurVisible = setBlurVisible(bottomBlur, canScroll && y < maxScroll - 72, bottomBlurVisible);
   };
 
   const paintThumb = (y) => {
@@ -314,7 +314,7 @@ function setupUnifiedScroll() {
     track.style.pointerEvents = 'auto';
     const rect = track.getBoundingClientRect();
     trackTop = rect.top;
-    const innerH = Math.max(0, rect.height - 2.5);
+    const innerH = Math.max(0, rect.height - 3);
     const thumbH = thumb.clientHeight || innerH * 0.4;
     travelPx = Math.max(0, innerH - thumbH);
     current = clampScroll(scroller.scrollTop || window.scrollY);
@@ -398,7 +398,7 @@ function setupUnifiedScroll() {
 
   const scrollToClientY = (clientY) => {
     if (maxScroll <= 2 || travelPx <= 0) return;
-    const p = Math.max(0, Math.min(1, (clientY - trackTop - 2.5 - dragOffset) / travelPx));
+    const p = Math.max(0, Math.min(1, (clientY - trackTop - 3 - dragOffset) / travelPx));
     current = p * maxScroll;
     target = current;
     commit(current);

@@ -261,18 +261,25 @@
 
 .sheet-edge-blur-bottom {
   visibility: hidden;
-  transform: translate3d(0, 105%, 0);
-  transition:
-    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
-    visibility 0s linear 420ms;
+  transition: visibility 0s linear 340ms;
+}
+
+.sheet-edge-blur-bottom::before,
+.sheet-edge-blur-bottom::after,
+.sheet-edge-blur-bottom > i {
+  opacity: 0;
+  transition: opacity 340ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .sheet-edge-blur-bottom[data-visible="true"] {
   visibility: visible;
-  transform: translate3d(0, 0, 0);
-  transition:
-    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
-    visibility 0s linear 0s;
+  transition: visibility 0s linear 0s;
+}
+
+.sheet-edge-blur-bottom[data-visible="true"]::before,
+.sheet-edge-blur-bottom[data-visible="true"]::after,
+.sheet-edge-blur-bottom[data-visible="true"] > i {
+  opacity: 1;
 }
 
 @supports not (corner-shape: squircle) {
@@ -306,20 +313,60 @@
   display: none;
 }
 
+@keyframes grainient-scroll-drift {
+  0%,
+  100% {
+    background-position: 0 0, 50% 0%;
+  }
+  50% {
+    background-position: 0 0, 50% 100%;
+  }
+}
+
 .grainient-scroll-track {
   background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.26'/%3E%3C/svg%3E"),
-    linear-gradient(180deg, #cdb2ff 0%, #dda4eb 34%, #f4958e 66%, #c6863d 100%);
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='1.8' intercept='-0.4'/%3E%3CfeFuncG type='linear' slope='1.8' intercept='-0.4'/%3E%3CfeFuncB type='linear' slope='1.8' intercept='-0.4'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.38'/%3E%3C/svg%3E"),
+    linear-gradient(
+      180deg,
+      #2b55b3 0%,
+      #8b75ff 26%,
+      #ff4fbf 52%,
+      #ff985a 78%,
+      #8b75ff 100%
+    );
+  background-size: 128px 128px, 100% 220%;
+  background-repeat: repeat, no-repeat;
+  background-blend-mode: overlay, normal;
+  animation: grainient-scroll-drift 18s ease-in-out infinite;
+}
+
+:root.light .grainient-scroll-track {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='1.8' intercept='-0.4'/%3E%3CfeFuncG type='linear' slope='1.8' intercept='-0.4'/%3E%3CfeFuncB type='linear' slope='1.8' intercept='-0.4'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.32'/%3E%3C/svg%3E"),
+    linear-gradient(
+      180deg,
+      #ffb487 0%,
+      #ff82cf 26%,
+      #aa99ff 52%,
+      #5e82cc 78%,
+      #ff82cf 100%
+    );
+  background-size: 128px 128px, 100% 220%;
+  background-repeat: repeat, no-repeat;
   background-blend-mode: overlay, normal;
 }
 
 .grainient-scroll-thumb {
-  background-color: rgba(14, 12, 22, 0.56);
+  background-color: rgba(18, 16, 28, 0.46);
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.22);
   will-change: transform;
 }
 
 :root.light .grainient-scroll-thumb {
-  background-color: rgba(20, 18, 28, 0.38);
+  background-color: rgba(255, 255, 255, 0.46);
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: brightness(1.3);
+  backdrop-filter: brightness(1.3);
 }
 
 .pixel-crisp {

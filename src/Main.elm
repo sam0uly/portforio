@@ -805,7 +805,7 @@ viewScrollTrack _ =
         , Attr.attribute "aria-hidden" "true"
         , Attr.style "opacity" "0"
         , Attr.style "pointer-events" "none"
-        , Attr.class "cursor-pointer touch-none select-none absolute right-2 top-11 bottom-0 z-30 w-[11px] rounded-t-full rounded-b-none pt-[2.5px] px-[2.5px] pb-0 grainient-scroll-track transition-opacity duration-200 before:content-[''] before:absolute before:-inset-x-3 before:inset-y-0"
+        , Attr.class "cursor-pointer touch-none select-none absolute right-2 top-11 bottom-0 z-30 w-[12px] rounded-t-full rounded-b-none pt-[3px] px-[3px] pb-0 grainient-scroll-track transition-opacity duration-200 before:content-[''] before:absolute before:-inset-x-3 before:inset-y-0"
         ]
         [ div
             [ Attr.id "mobile-scroll-thumb"
