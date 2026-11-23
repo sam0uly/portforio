@@ -18,29 +18,76 @@ function readRouteFromPath() {
   return window.location.pathname.replace(/\/+$/, '') || '/';
 }
 
+const blogPosts = loadBlogPosts(locale);
+const SITE_ORIGIN = 'https://portforio.samouly.fun';
+
+function syncSeoMeta(routePath) {
+  const clean = routePath.replace(/\/+$/, '') || '/';
+  let title = 'Alaa El-Samouly (Samouly) | Software Engineer at Charm';
+  let description =
+    'Alaa El-Samouly (Samouly, sam0uly) is an Egyptian software engineer at Charm building Go terminal interfaces, CLI tools (Twig, mural, Spin, bubbleMonitor, Mditor), NixOS setups, and web apps with Nuxt, Vue, and Elm.';
+  let ogType = 'website';
+
+  if (clean === '/blog') {
+    title = 'Writing | Alaa El-Samouly (Samouly)';
+    description =
+      'Technical writing by Alaa El-Samouly (Samouly) on Go, Linux distributions, NixOS, terminal tooling, and software engineering.';
+  } else if (clean.startsWith('/blog/')) {
+    const slug = clean.slice(6);
+    const post = blogPosts.find((p) => p.slug === slug);
+    if (post) {
+      title = `${post.title} | Samouly`;
+      description = post.summary || description;
+      ogType = 'article';
+    }
+  }
+
+  const canonicalUrl = `${SITE_ORIGIN}${clean === '/' ? '/' : clean}`;
+  const setMeta = (selector, value) => {
+    const el = document.querySelector(selector);
+    if (el) el.setAttribute('content', value);
+  };
+  const canonical = document.querySelector('link[rel="canonical"]');
+  if (canonical) canonical.setAttribute('href', canonicalUrl);
+  setMeta('meta[name="description"]', description);
+  setMeta('meta[property="og:type"]', ogType);
+  setMeta('meta[property="og:url"]', canonicalUrl);
+  setMeta('meta[property="og:title"]', title);
+  setMeta('meta[property="og:description"]', description);
+  setMeta('meta[name="twitter:url"]', canonicalUrl);
+  setMeta('meta[name="twitter:title"]', title);
+  setMeta('meta[name="twitter:description"]', description);
+}
+
+const initialRoutePath = readRouteFromPath();
+syncSeoMeta(initialRoutePath);
+
 const app = Elm.Main.init({
   node: document.getElementById('app'),
   flags: {
     currentYear: yearFmt.format(new Date()),
     diveDepthMeters: intFmt.format(35),
     prefersReducedMotion: reducedMotionQuery.matches,
-    initialRoute: readRouteFromPath(),
-    blogPosts: loadBlogPosts(locale),
+    initialRoute: initialRoutePath,
+    blogPosts,
   },
 });
 
 if (app.ports?.pushRoute) {
   app.ports.pushRoute.subscribe((routePath) => {
     const nextPath = routePath.startsWith('/') ? routePath : `/${routePath}`;
-    if (window.location.pathname !== nextPath) {
+    if (window.location.pathname !== nextPath || window.location.hash) {
       history.pushState(null, '', nextPath);
     }
+    syncSeoMeta(nextPath);
   });
 }
 
 if (app.ports?.routeChanged) {
   window.addEventListener('popstate', () => {
-    app.ports.routeChanged.send(readRouteFromPath());
+    const nextPath = readRouteFromPath();
+    syncSeoMeta(nextPath);
+    app.ports.routeChanged.send(nextPath);
   });
 }
 
@@ -463,4 +510,25 @@ if (app.ports?.scrollToHeading && scrollController) {
   app.ports.scrollToHeading.subscribe((id) => {
     scrollController.scrollTo(id);
   });
+}
+
+if (app.ports?.copyHeadingUrl) {
+  app.ports.copyHeadingUrl.subscribe(async (id) => {
+    const url = `${window.location.origin}${window.location.pathname}#${id}`;
+    history.replaceState(null, '', `${window.location.pathname}#${id}`);
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // Clipboard unavailable in insecure contexts
+    }
+  });
+}
+
+if (window.location.hash && scrollController) {
+  const initialHashId = decodeURIComponent(window.location.hash.slice(1));
+  if (initialHashId) {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => scrollController.scrollTo(initialHashId));
+    });
+  }
 }

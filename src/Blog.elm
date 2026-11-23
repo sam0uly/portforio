@@ -6,6 +6,7 @@ module Blog exposing
     , Post
     , TocItem
     , clearCopiedCode
+    , clearCopiedHeading
     , decodePosts
     , findBySlug
     , init
@@ -22,7 +23,7 @@ import Html.Attributes as Attr
 import Html.Events as Events
 import Html.Lazy as Lazy
 import Json.Decode as Decode exposing (Decoder)
-import Svg exposing (line, path, rect, svg)
+import Svg exposing (path, rect, svg)
 import Svg.Attributes as SvgAttr
 import Theme exposing (Theme(..))
 
@@ -89,6 +90,7 @@ type alias Model =
     , activeHeading : String
     , tocOpen : Bool
     , copiedCode : Maybe String
+    , copiedHeading : Maybe String
     }
 
 
@@ -99,6 +101,7 @@ type Msg
     | ToggleToc
     | JumpToHeading String
     | CopyCode String
+    | CopyHeadingLink String
 
 
 init : List Post -> Model
@@ -109,6 +112,7 @@ init posts =
     , activeHeading = ""
     , tocOpen = False
     , copiedCode = Nothing
+    , copiedHeading = Nothing
     }
 
 
@@ -126,6 +130,11 @@ clearCopiedCode model =
     { model | copiedCode = Nothing }
 
 
+clearCopiedHeading : Model -> Model
+clearCopiedHeading model =
+    { model | copiedHeading = Nothing }
+
+
 findBySlug : String -> Model -> Maybe Post
 findBySlug slug model =
     List.filter (\post -> post.slug == slug) model.posts
@@ -135,12 +144,13 @@ findBySlug slug model =
 type alias UpdateEffect =
     { scrollTo : Maybe String
     , copyText : Maybe String
+    , copyHeading : Maybe String
     }
 
 
 noEffect : UpdateEffect
 noEffect =
-    { scrollTo = Nothing, copyText = Nothing }
+    { scrollTo = Nothing, copyText = Nothing, copyHeading = Nothing }
 
 
 update : Msg -> Model -> ( Model, UpdateEffect )
@@ -169,12 +179,17 @@ update msg model =
 
         JumpToHeading headingId ->
             ( { model | activeHeading = headingId, tocOpen = False }
-            , { scrollTo = Just headingId, copyText = Nothing }
+            , { scrollTo = Just headingId, copyText = Nothing, copyHeading = Nothing }
             )
 
         CopyCode snippet ->
             ( { model | copiedCode = Just snippet }
-            , { scrollTo = Nothing, copyText = Just snippet }
+            , { scrollTo = Nothing, copyText = Just snippet, copyHeading = Nothing }
+            )
+
+        CopyHeadingLink headingId ->
+            ( { model | copiedHeading = Just headingId }
+            , { scrollTo = Just headingId, copyText = Nothing, copyHeading = Just headingId }
             )
 
 
@@ -703,7 +718,7 @@ viewPost config model slug =
             in
             div [ Attr.class "flex flex-col pointer-events-auto pt-10 xl:pt-0" ]
                 [ viewPostHeader config post
-                , Lazy.lazy4 viewArticleBody config.toMsg config.theme model.copiedCode post.blocks
+                , Lazy.lazy5 viewArticleBody config.toMsg config.theme model.copiedCode model.copiedHeading post.blocks
                 , viewAdjacentNav config prevPost nextPost
                 , viewUtilityBar config "/blog" "All posts" config.onOpenBlogIndex
                 ]
@@ -769,8 +784,8 @@ viewPostHeader config post =
         ]
 
 
-viewDesktopTocWing : ViewConfig msg -> Bool -> List (Html.Attribute msg) -> Html msg -> Model -> Maybe String -> Html msg
-viewDesktopTocWing config isOpen bgStyle overlayHtml model maybeSlug =
+viewDesktopTocWing : ViewConfig msg -> Bool -> List (Html.Attribute msg) -> List (Html.Attribute msg) -> Html msg -> Model -> Maybe String -> Html msg
+viewDesktopTocWing config isOpen bgStyle tintStyle overlayHtml model maybeSlug =
     let
         maybePost =
             maybeSlug |> Maybe.andThen (\slug -> findBySlug slug model)
@@ -851,9 +866,15 @@ viewDesktopTocWing config isOpen bgStyle overlayHtml model maybeSlug =
                                 , Attr.class "relative z-0 h-full overflow-y-hidden py-9 space-y-0.5 pr-1"
                                 ]
                                 (List.map (viewWingTocItem config activeId) post.toc)
-                            , div [ Attr.class "pointer-events-none select-none absolute inset-x-0 top-0 h-9 z-10 pblur" ]
+                            , div
+                                ([ Attr.class "pointer-events-none select-none absolute inset-x-0 top-0 h-9 z-20 pblur" ]
+                                    ++ tintStyle
+                                )
                                 [ Html.node "i" [] [], Html.node "i" [] [] ]
-                            , div [ Attr.class "pointer-events-none select-none absolute inset-x-0 bottom-0 h-9 z-10 pblur pblur-bottom" ]
+                            , div
+                                ([ Attr.class "pointer-events-none select-none absolute inset-x-0 bottom-0 h-9 z-20 pblur pblur-bottom" ]
+                                    ++ tintStyle
+                                )
                                 [ Html.node "i" [] [], Html.node "i" [] [] ]
                             ]
                         ]
@@ -907,8 +928,8 @@ viewWingTocItem config activeId item =
         ]
 
 
-viewMobileTocOverlay : ViewConfig msg -> Model -> String -> Html msg
-viewMobileTocOverlay config model slug =
+viewMobileTocOverlay : ViewConfig msg -> List (Html.Attribute msg) -> Model -> String -> Html msg
+viewMobileTocOverlay config tintStyle model slug =
     case findBySlug slug model of
         Nothing ->
             Html.text ""
@@ -961,11 +982,17 @@ viewMobileTocOverlay config model slug =
                         )
                     ]
                     [ if model.tocOpen then
-                        div [ Attr.class "pointer-events-none select-none absolute inset-x-0 top-0 -bottom-8 z-0 sheet-squircle-shape pblur pblur-toc-open" ]
+                        div
+                            ([ Attr.class "pointer-events-none select-none absolute inset-x-0 top-0 -bottom-8 z-0 sheet-squircle-shape pblur pblur-toc-open" ]
+                                ++ tintStyle
+                            )
                             [ Html.node "i" [] [], Html.node "i" [] [] ]
 
                       else
-                        div [ Attr.class "pointer-events-none select-none absolute inset-x-0 top-0 -bottom-7 z-0 sheet-squircle-shape pblur" ]
+                        div
+                            ([ Attr.class "pointer-events-none select-none absolute inset-x-0 top-0 -bottom-7 z-0 sheet-squircle-shape pblur" ]
+                                ++ tintStyle
+                            )
                             [ Html.node "i" [] [], Html.node "i" [] [] ]
                     , button
                         [ Attr.id "mobile-toc-toggle"
@@ -1023,53 +1050,99 @@ viewMobileTocOverlay config model slug =
                     ]
 
 
-viewArticleBody : (Msg -> msg) -> Theme -> Maybe String -> List Block -> Html msg
-viewArticleBody toMsg theme copiedCode blocks =
+viewArticleBody : (Msg -> msg) -> Theme -> Maybe String -> Maybe String -> List Block -> Html msg
+viewArticleBody toMsg theme copiedCode copiedHeading blocks =
     article
         [ Attr.id "article-body"
         , Attr.class "mt-8 sm:mt-9 min-w-0 space-y-4 text-[14.5px] sm:text-[15px] leading-[1.72] text-[var(--page-muted)]"
         ]
-        (List.map (viewBlock toMsg theme copiedCode) blocks)
+        (List.map (viewBlock toMsg theme copiedCode copiedHeading) blocks)
 
 
-viewBlock : (Msg -> msg) -> Theme -> Maybe String -> Block -> Html msg
-viewBlock toMsg theme copiedCode block =
+viewHeadingAnchor : (Msg -> msg) -> Maybe String -> String -> List Inline -> Html msg
+viewHeadingAnchor toMsg copiedHeading id inlines =
+    let
+        isCopied =
+            copiedHeading == Just id
+    in
+    a
+        [ Attr.href ("#" ++ id)
+        , onInternalLinkClick (toMsg (CopyHeadingLink id))
+        , Attr.title
+            (if isCopied then
+                "Link copied"
+
+             else
+                "Copy link to section"
+            )
+        , Attr.class ("group/heading inline-flex items-baseline gap-2 rounded-xs transition-colors duration-150 " ++ focusRing)
+        ]
+        [ span [] (List.map viewInline inlines)
+        , span
+            [ Attr.attribute "aria-hidden" "true"
+            , Attr.class
+                ("shrink-0 font-mono text-[0.72em] font-normal select-none transition-opacity duration-150 "
+                    ++ (if isCopied then
+                            "text-[var(--page-fg)] opacity-100"
+
+                        else
+                            "text-[var(--page-subtle)] opacity-0 group-hover/heading:opacity-80 group-focus-visible/heading:opacity-100"
+                       )
+                )
+            ]
+            [ text
+                (if isCopied then
+                    "copied"
+
+                 else
+                    "#"
+                )
+            ]
+        ]
+
+
+viewBlock : (Msg -> msg) -> Theme -> Maybe String -> Maybe String -> Block -> Html msg
+viewBlock toMsg theme copiedCode copiedHeading block =
     case block of
         Heading level id inlines ->
+            let
+                headingContent =
+                    [ viewHeadingAnchor toMsg copiedHeading id inlines ]
+            in
             if level <= 2 then
                 h2
                     [ Attr.id id
                     , Attr.class "scroll-mt-8 pt-6 first:pt-0 font-display font-semibold text-lg sm:text-[1.3rem] leading-snug tracking-[-0.02em] text-[var(--page-fg)] text-balance"
                     ]
-                    (List.map viewInline inlines)
+                    headingContent
 
             else if level == 3 then
                 h3
                     [ Attr.id id
                     , Attr.class "scroll-mt-8 pt-4 font-display font-semibold text-[15.5px] sm:text-base leading-snug tracking-[-0.015em] text-[var(--page-fg)] text-balance"
                     ]
-                    (List.map viewInline inlines)
+                    headingContent
 
             else if level == 4 then
                 h4
                     [ Attr.id id
                     , Attr.class "scroll-mt-8 pt-3 font-display font-medium text-[14.5px] leading-snug text-[var(--page-fg)]/90 text-balance"
                     ]
-                    (List.map viewInline inlines)
+                    headingContent
 
             else if level == 5 then
                 h5
                     [ Attr.id id
                     , Attr.class "scroll-mt-8 pt-2.5 font-display font-medium text-[13.5px] leading-snug text-[var(--page-fg)]/85 text-balance"
                     ]
-                    (List.map viewInline inlines)
+                    headingContent
 
             else
                 h6
                     [ Attr.id id
                     , Attr.class "scroll-mt-8 pt-2 font-display font-medium text-[13px] leading-snug text-[var(--page-muted)] text-balance"
                     ]
-                    (List.map viewInline inlines)
+                    headingContent
 
         Paragraph inlines ->
             p [ Attr.class "text-pretty break-words" ]
@@ -1106,7 +1179,7 @@ viewBlock toMsg theme copiedCode block =
                         ]
                         [ ditherTailSvg ]
                     ]
-                    :: List.map (viewBlock toMsg theme copiedCode) blocks
+                    :: List.map (viewBlock toMsg theme copiedCode copiedHeading) blocks
                 )
 
         CardGroup cards ->
@@ -1119,7 +1192,7 @@ viewBlock toMsg theme copiedCode block =
                         "grid grid-cols-1"
             in
             div [ Attr.class ("my-5 " ++ gridCols) ]
-                (List.map (viewCard toMsg theme copiedCode) cards)
+                (List.map (viewCard toMsg theme copiedCode copiedHeading) cards)
 
         CodeBlock lang filename snippet tokenLines ->
             let
@@ -1289,16 +1362,16 @@ viewBlock toMsg theme copiedCode block =
                 [ ditherDividerSvg ]
 
 
-viewCard : (Msg -> msg) -> Theme -> Maybe String -> CardItem -> Html msg
-viewCard toMsg theme copiedCode card =
+viewCard : (Msg -> msg) -> Theme -> Maybe String -> Maybe String -> CardItem -> Html msg
+viewCard toMsg theme copiedCode copiedHeading card =
     div [ Attr.class "p-4 box-squircle bg-[var(--tab-bg)]/55 space-y-2 text-[13.5px] leading-relaxed" ]
         (if String.isEmpty card.title then
-            List.map (viewBlock toMsg theme copiedCode) card.blocks
+            List.map (viewBlock toMsg theme copiedCode copiedHeading) card.blocks
 
          else
             p [ Attr.class "font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--page-fg)]" ]
                 [ text card.title ]
-                :: List.map (viewBlock toMsg theme copiedCode) card.blocks
+                :: List.map (viewBlock toMsg theme copiedCode copiedHeading) card.blocks
         )
 
 
@@ -1343,109 +1416,123 @@ viewAdjacentNav config prevPost nextPost =
         Html.text ""
 
     else
-        div [ Attr.class "mt-10 pt-5 border-t border-[var(--page-line)] grid grid-cols-1 sm:grid-cols-2 gap-4" ]
-            [ case prevPost of
-                Just prev ->
-                    a
-                        [ Attr.href ("/blog/" ++ prev.slug)
-                        , onInternalLinkClick (config.onOpenPost prev.slug)
-                        , Attr.class ("group flex flex-col items-start gap-1 rounded-xs " ++ focusRing)
-                        ]
-                        [ span [ Attr.class "inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--page-subtle)] group-hover:text-[var(--page-fg)] transition-colors duration-150" ]
-                            [ chevronLeftIcon
-                            , span [] [ text "Newer" ]
+        div [ Attr.class "mt-10 space-y-5" ]
+            [ div
+                [ Attr.attribute "role" "separator"
+                , Attr.class "flex items-center justify-center text-[var(--page-subtle)]/65"
+                ]
+                [ ditherHeaderDividerSvg ]
+            , div [ Attr.class "grid grid-cols-1 sm:grid-cols-2 gap-4" ]
+                [ case prevPost of
+                    Just prev ->
+                        a
+                            [ Attr.href ("/blog/" ++ prev.slug)
+                            , onInternalLinkClick (config.onOpenPost prev.slug)
+                            , Attr.class ("group flex flex-col items-start gap-1 rounded-xs " ++ focusRing)
                             ]
-                        , span [ Attr.class "text-sm font-medium text-[var(--page-muted)] group-hover:text-[var(--page-fg)] transition-colors duration-150 text-pretty" ]
-                            [ text prev.title ]
-                        ]
-
-                Nothing ->
-                    div [] []
-            , case nextPost of
-                Just next ->
-                    a
-                        [ Attr.href ("/blog/" ++ next.slug)
-                        , onInternalLinkClick (config.onOpenPost next.slug)
-                        , Attr.class ("group flex flex-col items-start sm:items-end sm:text-right gap-1 rounded-xs " ++ focusRing)
-                        ]
-                        [ span [ Attr.class "inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--page-subtle)] group-hover:text-[var(--page-fg)] transition-colors duration-150" ]
-                            [ span [] [ text "Older" ]
-                            , chevronRightIcon
+                            [ span [ Attr.class "inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--page-subtle)] group-hover:text-[var(--page-fg)] transition-colors duration-150" ]
+                                [ chevronLeftIcon
+                                , span [] [ text "Newer" ]
+                                ]
+                            , span [ Attr.class "text-sm font-medium text-[var(--page-muted)] group-hover:text-[var(--page-fg)] transition-colors duration-150 text-pretty" ]
+                                [ text prev.title ]
                             ]
-                        , span [ Attr.class "text-sm font-medium text-[var(--page-muted)] group-hover:text-[var(--page-fg)] transition-colors duration-150 text-pretty" ]
-                            [ text next.title ]
-                        ]
 
-                Nothing ->
-                    div [] []
+                    Nothing ->
+                        div [] []
+                , case nextPost of
+                    Just next ->
+                        a
+                            [ Attr.href ("/blog/" ++ next.slug)
+                            , onInternalLinkClick (config.onOpenPost next.slug)
+                            , Attr.class ("group flex flex-col items-start sm:items-end sm:text-right gap-1 rounded-xs " ++ focusRing)
+                            ]
+                            [ span [ Attr.class "inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--page-subtle)] group-hover:text-[var(--page-fg)] transition-colors duration-150" ]
+                                [ span [] [ text "Older" ]
+                                , chevronRightIcon
+                                ]
+                            , span [ Attr.class "text-sm font-medium text-[var(--page-muted)] group-hover:text-[var(--page-fg)] transition-colors duration-150 text-pretty" ]
+                                [ text next.title ]
+                            ]
+
+                    Nothing ->
+                        div [] []
+                ]
             ]
 
 
 viewUtilityBar : ViewConfig msg -> String -> String -> msg -> Html msg
 viewUtilityBar config backHref backLabel backMsg =
-    div [ Attr.class "mt-10 sm:mt-12 pt-2.5 border-t border-[var(--page-line)] flex flex-wrap items-center justify-between gap-x-4 gap-y-1 font-mono text-[11px] text-[var(--page-subtle)]" ]
-        [ a
-            [ Attr.href backHref
-            , onInternalLinkClick backMsg
-            , Attr.class
-                ("group inline-flex items-center gap-1.5 min-h-11 sm:min-h-7 text-[var(--page-muted)] transition-colors duration-150 hover:text-[var(--page-fg)] rounded-xs "
-                    ++ focusRing
-                )
+    div [ Attr.class "mt-10 sm:mt-12 space-y-3" ]
+        [ div
+            [ Attr.attribute "role" "separator"
+            , Attr.class "flex items-center justify-center text-[var(--page-subtle)]/65"
             ]
-            [ chevronLeftIcon
-            , span [] [ text backLabel ]
-            ]
-        , div [ Attr.class "flex items-center gap-x-4" ]
-            [ button
-                [ Attr.type_ "button"
-                , Events.onClick config.onToggleTheme
-                , Attr.attribute "aria-label"
-                    (case config.theme of
-                        Dark ->
-                            "Switch to Light Theme"
-
-                        Light ->
-                            "Switch to Dark Theme"
-                    )
+            [ ditherHeaderDividerSvg ]
+        , div [ Attr.class "flex flex-wrap items-center justify-between gap-x-4 gap-y-1 font-mono text-[11px] text-[var(--page-subtle)]" ]
+            [ a
+                [ Attr.href backHref
+                , onInternalLinkClick backMsg
                 , Attr.class
-                    ("inline-flex items-center min-h-11 sm:min-h-7 text-[var(--page-muted)] transition-colors duration-150 hover:text-[var(--page-fg)] rounded-xs "
+                    ("group inline-flex items-center gap-1.5 min-h-11 sm:min-h-7 text-[var(--page-muted)] transition-colors duration-150 hover:text-[var(--page-fg)] rounded-xs "
                         ++ focusRing
                     )
                 ]
-                [ text
-                    (case config.theme of
-                        Dark ->
-                            "Light"
-
-                        Light ->
-                            "Dark"
-                    )
+                [ chevronLeftIcon
+                , span [] [ text backLabel ]
                 ]
-            , button
-                [ Attr.type_ "button"
-                , Events.onClick config.onToggleMotion
-                , Attr.attribute "aria-pressed"
-                    (if config.motionPlaying then
-                        "false"
+            , div [ Attr.class "flex items-center gap-x-4" ]
+                [ button
+                    [ Attr.type_ "button"
+                    , Events.onClick config.onToggleTheme
+                    , Attr.attribute "aria-label"
+                        (case config.theme of
+                            Dark ->
+                                "Switch to Light Theme"
 
-                     else
-                        "true"
-                    )
-                , Attr.class
-                    ("inline-flex items-center min-h-11 sm:min-h-7 text-[var(--page-subtle)] transition-colors duration-150 hover:text-[var(--page-fg)] rounded-xs "
-                        ++ focusRing
-                    )
-                ]
-                [ text
-                    (if config.motionPlaying then
-                        "Pause"
+                            Light ->
+                                "Switch to Dark Theme"
+                        )
+                    , Attr.class
+                        ("inline-flex items-center min-h-11 sm:min-h-7 text-[var(--page-muted)] transition-colors duration-150 hover:text-[var(--page-fg)] rounded-xs "
+                            ++ focusRing
+                        )
+                    ]
+                    [ text
+                        (case config.theme of
+                            Dark ->
+                                "Light"
 
-                     else
-                        "Play"
-                    )
+                            Light ->
+                                "Dark"
+                        )
+                    ]
+                , button
+                    [ Attr.type_ "button"
+                    , Events.onClick config.onToggleMotion
+                    , Attr.attribute "aria-pressed"
+                        (if config.motionPlaying then
+                            "false"
+
+                         else
+                            "true"
+                        )
+                    , Attr.class
+                        ("inline-flex items-center min-h-11 sm:min-h-7 text-[var(--page-subtle)] transition-colors duration-150 hover:text-[var(--page-fg)] rounded-xs "
+                            ++ focusRing
+                        )
+                    ]
+                    [ text
+                        (if config.motionPlaying then
+                            "Pause"
+
+                         else
+                            "Play"
+                        )
+                    ]
+                , span [ Attr.class "tabular-nums" ]
+                    [ text config.currentYear ]
                 ]
-            , span [ Attr.class "tabular-nums" ]
-                [ text config.currentYear ]
             ]
         ]
 
@@ -1504,28 +1591,12 @@ chevronDownIcon isOpen =
         , Attr.attribute "aria-hidden" "true"
         , Attr.attribute "focusable" "false"
         ]
-        [ line
-            [ SvgAttr.x1 "8"
-            , SvgAttr.y1 "10.4"
-            , SvgAttr.x2 "2.2"
-            , SvgAttr.y2 "6.4"
+        [ path
+            [ SvgAttr.d "M3.75 6.25L8 10.5L12.25 6.25"
             , SvgAttr.stroke "currentColor"
             , SvgAttr.strokeWidth "1.5"
             , SvgAttr.strokeLinecap "round"
-            , Attr.style "transform-origin" "8px 10.4px"
-            , SvgAttr.class "transition-transform duration-200 ease-out group-hover:-rotate-[9deg]"
-            ]
-            []
-        , line
-            [ SvgAttr.x1 "8"
-            , SvgAttr.y1 "10.4"
-            , SvgAttr.x2 "13.8"
-            , SvgAttr.y2 "6.4"
-            , SvgAttr.stroke "currentColor"
-            , SvgAttr.strokeWidth "1.5"
-            , SvgAttr.strokeLinecap "round"
-            , Attr.style "transform-origin" "8px 10.4px"
-            , SvgAttr.class "transition-transform duration-200 ease-out group-hover:rotate-[9deg]"
+            , SvgAttr.strokeLinejoin "round"
             ]
             []
         ]
@@ -1543,9 +1614,9 @@ morphCopyIcon isCopied =
         [ Svg.g
             [ Attr.style "transform-origin" "8px 8px"
             , SvgAttr.class
-                ("transition-[transform,opacity] duration-200 ease-out "
+                ("transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] "
                     ++ (if isCopied then
-                            "scale-50 -rotate-45 opacity-0"
+                            "scale-75 -rotate-12 opacity-0"
 
                         else
                             "scale-100 rotate-0 opacity-100"
@@ -1553,27 +1624,27 @@ morphCopyIcon isCopied =
                 )
             ]
             [ rect
-                [ SvgAttr.x "5.5"
-                , SvgAttr.y "5.5"
-                , SvgAttr.width "8"
-                , SvgAttr.height "8"
-                , SvgAttr.rx "1.5"
+                [ SvgAttr.x "5.75"
+                , SvgAttr.y "5.75"
+                , SvgAttr.width "7.5"
+                , SvgAttr.height "7.5"
+                , SvgAttr.rx "1.75"
                 , SvgAttr.stroke "currentColor"
-                , SvgAttr.strokeWidth "1.35"
+                , SvgAttr.strokeWidth "1.45"
                 ]
                 []
             , path
-                [ SvgAttr.d "M3.5 10.5H3A1.5 1.5 0 0 1 1.5 9V3A1.5 1.5 0 0 1 3 1.5h6A1.5 1.5 0 0 1 10.5 3v.5"
+                [ SvgAttr.d "M3.75 10.25H3.5A1.75 1.75 0 0 1 1.75 8.5V3.5A1.75 1.75 0 0 1 3.5 1.75h5A1.75 1.75 0 0 1 10.25 3.5v.25"
                 , SvgAttr.stroke "currentColor"
-                , SvgAttr.strokeWidth "1.35"
+                , SvgAttr.strokeWidth "1.45"
                 , SvgAttr.strokeLinecap "round"
                 ]
                 []
             ]
         , path
-            [ SvgAttr.d "M3.5 8.5L6.5 11.5L12.5 4.5"
+            [ SvgAttr.d "M3.5 8.6L6.4 11.4L12.5 4.6"
             , SvgAttr.stroke "currentColor"
-            , SvgAttr.strokeWidth "1.6"
+            , SvgAttr.strokeWidth "1.7"
             , SvgAttr.strokeLinecap "round"
             , SvgAttr.strokeLinejoin "round"
             , SvgAttr.strokeDasharray "16"
@@ -1586,12 +1657,12 @@ morphCopyIcon isCopied =
                 )
             , Attr.style "transform-origin" "8px 8px"
             , SvgAttr.class
-                ("transition-[stroke-dashoffset,transform,opacity] duration-300 ease-out "
+                ("transition-[stroke-dashoffset,transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] "
                     ++ (if isCopied then
-                            "scale-100 opacity-100"
+                            "scale-100 rotate-0 opacity-100"
 
                         else
-                            "scale-75 opacity-0"
+                            "scale-75 rotate-12 opacity-0"
                        )
                 )
             ]
@@ -1666,6 +1737,93 @@ tocRailPixel isActive isSub =
             ]
 
 
+bayerDividerRects : Int -> List (Html msg)
+bayerDividerRects totalCols =
+    let
+        fadeCols =
+            totalCols // 4
+
+        solidStart =
+            fadeCols
+
+        solidWidth =
+            totalCols - (fadeCols * 2)
+
+        bayer4 x y =
+            case ( modBy 4 x, modBy 4 y ) of
+                ( 0, 0 ) -> 0
+                ( 2, 0 ) -> 8
+                ( 0, 2 ) -> 12
+                ( 2, 2 ) -> 4
+                ( 1, 1 ) -> 10
+                ( 3, 1 ) -> 2
+                ( 1, 3 ) -> 6
+                ( 3, 3 ) -> 14
+                ( 0, 1 ) -> 15
+                ( 2, 1 ) -> 7
+                ( 0, 3 ) -> 3
+                ( 2, 3 ) -> 11
+                ( 1, 0 ) -> 13
+                ( 3, 0 ) -> 5
+                ( 1, 2 ) -> 9
+                _ -> 1
+
+        edgeCell x y =
+            let
+                dist =
+                    min x (totalCols - 1 - x)
+
+                density =
+                    toFloat (dist + 1) / toFloat (fadeCols + 1)
+
+                threshold =
+                    (toFloat (bayer4 x y) + 0.5) / 16.0
+            in
+            if density > threshold then
+                Just
+                    (rect
+                        [ SvgAttr.x (String.fromInt x)
+                        , SvgAttr.y (String.fromInt y)
+                        , SvgAttr.width "1"
+                        , SvgAttr.height "1"
+                        , SvgAttr.fill "currentColor"
+                        ]
+                        []
+                    )
+
+            else
+                Nothing
+
+        leftEdge =
+            List.range 1 2
+                |> List.concatMap
+                    (\y ->
+                        List.range 0 (fadeCols - 1)
+                            |> List.filterMap (\x -> edgeCell x y)
+                    )
+
+        rightEdge =
+            List.range 1 2
+                |> List.concatMap
+                    (\y ->
+                        List.range (totalCols - fadeCols) (totalCols - 1)
+                            |> List.filterMap (\x -> edgeCell x y)
+                    )
+
+        solidMid =
+            [ rect
+                [ SvgAttr.x (String.fromInt solidStart)
+                , SvgAttr.y "1"
+                , SvgAttr.width (String.fromInt solidWidth)
+                , SvgAttr.height "2"
+                , SvgAttr.fill "currentColor"
+                ]
+                []
+            ]
+    in
+    leftEdge ++ solidMid ++ rightEdge
+
+
 ditherDividerSvg : Html msg
 ditherDividerSvg =
     svg
@@ -1676,22 +1834,7 @@ ditherDividerSvg =
         , Attr.attribute "aria-hidden" "true"
         , Attr.attribute "focusable" "false"
         ]
-        [ rect [ SvgAttr.x "0", SvgAttr.y "1", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "3", SvgAttr.y "2", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "6", SvgAttr.y "1", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "8", SvgAttr.y "2", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "10", SvgAttr.y "1", SvgAttr.width "2", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "12", SvgAttr.y "2", SvgAttr.width "2", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "14", SvgAttr.y "1", SvgAttr.width "2", SvgAttr.height "2", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "16", SvgAttr.y "1", SvgAttr.width "48", SvgAttr.height "2", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "64", SvgAttr.y "1", SvgAttr.width "2", SvgAttr.height "2", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "66", SvgAttr.y "2", SvgAttr.width "2", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "68", SvgAttr.y "1", SvgAttr.width "2", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "71", SvgAttr.y "2", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "73", SvgAttr.y "1", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "76", SvgAttr.y "2", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "79", SvgAttr.y "1", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        ]
+        (bayerDividerRects 80)
 
 
 ditherHeaderDividerSvg : Html msg
@@ -1704,22 +1847,7 @@ ditherHeaderDividerSvg =
         , Attr.attribute "aria-hidden" "true"
         , Attr.attribute "focusable" "false"
         ]
-        [ rect [ SvgAttr.x "0", SvgAttr.y "1", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "3", SvgAttr.y "2", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "6", SvgAttr.y "1", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "8", SvgAttr.y "2", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "10", SvgAttr.y "1", SvgAttr.width "2", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "12", SvgAttr.y "2", SvgAttr.width "2", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "14", SvgAttr.y "1", SvgAttr.width "2", SvgAttr.height "2", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "16", SvgAttr.y "1", SvgAttr.width "128", SvgAttr.height "2", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "144", SvgAttr.y "1", SvgAttr.width "2", SvgAttr.height "2", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "146", SvgAttr.y "2", SvgAttr.width "2", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "148", SvgAttr.y "1", SvgAttr.width "2", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "151", SvgAttr.y "2", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "153", SvgAttr.y "1", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "156", SvgAttr.y "2", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        , rect [ SvgAttr.x "159", SvgAttr.y "1", SvgAttr.width "1", SvgAttr.height "1", SvgAttr.fill "currentColor" ] []
-        ]
+        (bayerDividerRects 160)
 
 
 ditherTailSvg : Html msg
@@ -1764,28 +1892,12 @@ chevronLeftIcon =
         , Attr.attribute "aria-hidden" "true"
         , Attr.attribute "focusable" "false"
         ]
-        [ line
-            [ SvgAttr.x1 "5.6"
-            , SvgAttr.y1 "8"
-            , SvgAttr.x2 "9.6"
-            , SvgAttr.y2 "2.2"
+        [ path
+            [ SvgAttr.d "M9.75 3.75L5.5 8L9.75 12.25"
             , SvgAttr.stroke "currentColor"
             , SvgAttr.strokeWidth "1.5"
             , SvgAttr.strokeLinecap "round"
-            , Attr.style "transform-origin" "5.6px 8px"
-            , SvgAttr.class "transition-transform duration-200 ease-out group-hover:rotate-[9deg]"
-            ]
-            []
-        , line
-            [ SvgAttr.x1 "5.6"
-            , SvgAttr.y1 "8"
-            , SvgAttr.x2 "9.6"
-            , SvgAttr.y2 "13.8"
-            , SvgAttr.stroke "currentColor"
-            , SvgAttr.strokeWidth "1.5"
-            , SvgAttr.strokeLinecap "round"
-            , Attr.style "transform-origin" "5.6px 8px"
-            , SvgAttr.class "transition-transform duration-200 ease-out group-hover:-rotate-[9deg]"
+            , SvgAttr.strokeLinejoin "round"
             ]
             []
         ]
@@ -1800,28 +1912,12 @@ chevronRightIcon =
         , Attr.attribute "aria-hidden" "true"
         , Attr.attribute "focusable" "false"
         ]
-        [ line
-            [ SvgAttr.x1 "10.4"
-            , SvgAttr.y1 "8"
-            , SvgAttr.x2 "6.4"
-            , SvgAttr.y2 "2.2"
+        [ path
+            [ SvgAttr.d "M6.25 3.75L10.5 8L6.25 12.25"
             , SvgAttr.stroke "currentColor"
             , SvgAttr.strokeWidth "1.5"
             , SvgAttr.strokeLinecap "round"
-            , Attr.style "transform-origin" "10.4px 8px"
-            , SvgAttr.class "transition-transform duration-200 ease-out group-hover:-rotate-[9deg]"
-            ]
-            []
-        , line
-            [ SvgAttr.x1 "10.4"
-            , SvgAttr.y1 "8"
-            , SvgAttr.x2 "6.4"
-            , SvgAttr.y2 "13.8"
-            , SvgAttr.stroke "currentColor"
-            , SvgAttr.strokeWidth "1.5"
-            , SvgAttr.strokeLinecap "round"
-            , Attr.style "transform-origin" "10.4px 8px"
-            , SvgAttr.class "transition-transform duration-200 ease-out group-hover:rotate-[9deg]"
+            , SvgAttr.strokeLinejoin "round"
             ]
             []
         ]

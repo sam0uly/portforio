@@ -40,6 +40,9 @@ port resetScroll : () -> Cmd msg
 port scrollToHeading : String -> Cmd msg
 
 
+port copyHeadingUrl : String -> Cmd msg
+
+
 port routeChanged : (String -> msg) -> Sub msg
 
 
@@ -111,6 +114,7 @@ type Msg
     | GotClipboardResult Bool
     | ResetCopyState
     | ResetCodeCopy
+    | ResetHeadingCopy
 
 
 routeFromString : String -> Route
@@ -349,6 +353,8 @@ update msg model =
                         [ Maybe.map scrollToHeading effect.scrollTo
                         , Maybe.map copyToClipboard effect.copyText
                         , Maybe.map (\_ -> Process.sleep 1800 |> Task.perform (\_ -> ResetCodeCopy)) effect.copyText
+                        , Maybe.map copyHeadingUrl effect.copyHeading
+                        , Maybe.map (\_ -> Process.sleep 1800 |> Task.perform (\_ -> ResetHeadingCopy)) effect.copyHeading
                         ]
             in
             ( { model | blog = nextBlog }
@@ -357,6 +363,11 @@ update msg model =
 
         ResetCodeCopy ->
             ( { model | blog = Blog.clearCopiedCode model.blog }
+            , Cmd.none
+            )
+
+        ResetHeadingCopy ->
+            ( { model | blog = Blog.clearCopiedHeading model.blog }
             , Cmd.none
             )
 
@@ -631,33 +642,42 @@ viewDesktopTocWingLazy wingOpen theme bayerMask blog wingSlug =
         (makeBlogConfig theme True "")
         wingOpen
         (BayerMask.sheetBackgroundColorStyle theme bayerMask)
+        (BayerMask.sheetTintColorStyle theme bayerMask)
         (Lazy.lazy2 BayerMask.viewOverlay theme bayerMask)
         blog
         wingSlug
 
 
-viewMobileTocOverlayLazy : Blog.Model -> String -> Html Msg
-viewMobileTocOverlayLazy blog slug =
-    Blog.viewMobileTocOverlay (makeBlogConfig Dark True "") blog slug
+viewMobileTocOverlayLazy : Theme -> BayerMask.Model -> Blog.Model -> String -> Html Msg
+viewMobileTocOverlayLazy theme bayerMask blog slug =
+    Blog.viewMobileTocOverlay
+        (makeBlogConfig theme True "")
+        (BayerMask.sheetTintColorStyle theme bayerMask)
+        blog
+        slug
 
 
-viewEdgeBlurTop : () -> Html Msg
-viewEdgeBlurTop _ =
+viewEdgeBlurTop : Theme -> BayerMask.Model -> Html Msg
+viewEdgeBlurTop theme bayerMask =
     div
-        [ Attr.id "sheet-blur-top"
-        , Attr.attribute "aria-hidden" "true"
-        , Attr.class "pointer-events-none select-none absolute inset-x-0 top-0 h-16 sm:h-20 z-20 sheet-squircle-shape pblur sheet-edge-blur"
-        ]
+        ([ Attr.id "sheet-blur-top"
+         , Attr.attribute "aria-hidden" "true"
+         , Attr.class "pointer-events-none select-none absolute inset-x-0 top-0 h-16 sm:h-20 z-20 sheet-squircle-shape pblur sheet-edge-blur"
+         ]
+            ++ BayerMask.sheetTintColorStyle theme bayerMask
+        )
         [ Html.node "i" [] [], Html.node "i" [] [] ]
 
 
-viewEdgeBlurBottom : () -> Html Msg
-viewEdgeBlurBottom _ =
+viewEdgeBlurBottom : Theme -> BayerMask.Model -> Html Msg
+viewEdgeBlurBottom theme bayerMask =
     div
-        [ Attr.id "sheet-blur-bottom"
-        , Attr.attribute "aria-hidden" "true"
-        , Attr.class "pointer-events-none select-none absolute inset-x-0 bottom-0 h-20 z-20 pblur pblur-bottom sheet-edge-blur-bottom"
-        ]
+        ([ Attr.id "sheet-blur-bottom"
+         , Attr.attribute "aria-hidden" "true"
+         , Attr.class "pointer-events-none select-none absolute inset-x-0 bottom-0 h-20 z-20 pblur pblur-bottom sheet-edge-blur-bottom"
+         ]
+            ++ BayerMask.sheetTintColorStyle theme bayerMask
+        )
         [ Html.node "i" [] [], Html.node "i" [] [] ]
 
 
@@ -757,12 +777,12 @@ view model =
                         ]
                     , case model.route of
                         BlogPost slug ->
-                            Lazy.lazy2 viewMobileTocOverlayLazy model.blog slug
+                            Lazy.lazy4 viewMobileTocOverlayLazy model.theme model.bayerMask model.blog slug
 
                         _ ->
                             text ""
-                    , Lazy.lazy viewEdgeBlurTop ()
-                    , Lazy.lazy viewEdgeBlurBottom ()
+                    , Lazy.lazy2 viewEdgeBlurTop model.theme model.bayerMask
+                    , Lazy.lazy2 viewEdgeBlurBottom model.theme model.bayerMask
                     , Lazy.lazy2 BayerMask.viewOverlay model.theme model.bayerMask
                     , Lazy.lazy viewScrollTrack ()
                     ]
