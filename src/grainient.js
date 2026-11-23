@@ -39,6 +39,7 @@ uniform float uContrast;
 uniform float uSaturation;
 uniform float uSettle;
 uniform float uReveal;
+uniform vec4 uOcclude;
 in vec2 vUv;
 out vec4 outColor;
 
@@ -107,6 +108,7 @@ vec3 encode(vec3 c) {
 }
 
 void main() {
+  if (vUv.x > uOcclude.x && vUv.x < uOcclude.z && vUv.y < uOcclude.w) discard;
   vec2 p = (vUv - 0.5) * vec2(uAspect, 1.0);
   for (int i = 0; i < 24; i++) {
     float w = uStirWeight[i];
@@ -172,6 +174,7 @@ uniform sampler2D uField;
 uniform float uGrain;
 uniform float uGrainSize;
 uniform float uFrame;
+uniform vec4 uOcclude;
 in vec2 vUv;
 out vec4 outColor;
 
@@ -189,6 +192,7 @@ float clump(vec2 p) {
 }
 
 void main() {
+  if (vUv.x > uOcclude.x && vUv.x < uOcclude.z && vUv.y < uOcclude.w) discard;
   vec3 color = texture(uField, vUv).rgb;
   vec2 pixel = gl_FragCoord.xy + uFrame * vec2(17.0, 59.0);
   float fine = hash(pixel) + hash(pixel + 7.13) - 1.0;
@@ -374,6 +378,27 @@ class GrainientBgElement extends HTMLElement {
     let raf = 0;
     let last = 0;
     let visible = true;
+    const occlude = new Float32Array(4);
+
+    const measureOcclude = () => {
+      const sheet = document.getElementById('content-sheet');
+      if (!sheet || view.width < 1 || view.height < 1) {
+        occlude.fill(0);
+        return;
+      }
+      const r = sheet.getBoundingClientRect();
+      const minX = (r.left + 10) / view.width;
+      const maxX = (r.right - 10) / view.width;
+      const maxY = 1 - (r.top + 56) / view.height;
+      if (maxX > minX && maxY > 0) {
+        occlude[0] = minX;
+        occlude[1] = 0;
+        occlude[2] = maxX;
+        occlude[3] = maxY;
+      } else {
+        occlude.fill(0);
+      }
+    };
 
     const syncPalette = (settings) => {
       const key = `${settings.colors.join(',')}|${settings.lightMode}`;
@@ -449,6 +474,7 @@ class GrainientBgElement extends HTMLElement {
       gl.uniform1f(fu.uSaturation, s.saturation);
       gl.uniform1f(fu.uSettle, introClock * introClock * (3 - 2 * introClock));
       gl.uniform1f(fu.uReveal, introClock);
+      gl.uniform4fv(fu.uOcclude, occlude);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
 
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -460,6 +486,7 @@ class GrainientBgElement extends HTMLElement {
       gl.uniform1f(cu.uGrain, s.grainAmount);
       gl.uniform1f(cu.uGrainSize, s.grainSize * view.ratio);
       gl.uniform1f(cu.uFrame, frameSeed);
+      gl.uniform4fv(cu.uOcclude, occlude);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     };
 
@@ -521,12 +548,22 @@ class GrainientBgElement extends HTMLElement {
       }
     };
 
+    let lastDraw = 0;
+
     const frame = (now) => {
       raf = 0;
       if (!visible || document.hidden) return;
       const s = this._readSettings();
+      const interactiveActive =
+        introClock < 1 || rampMorphing || trail.length > 0 || spins.length > 0;
+      const minInterval = interactiveActive ? 0 : 1000 / 30;
+      if (lastDraw && now - lastDraw < minInterval) {
+        raf = requestAnimationFrame(frame);
+        return;
+      }
       const dt = last ? clamp((now - last) / 1000, 0.001, 0.05) : 1 / 60;
       last = now;
+      lastDraw = now;
       if (!reduce && !s.paused) time += dt * s.speed * 0.16;
       if (introClock < 1) introClock = Math.min(1, introClock + dt / INTRO_SECONDS);
       grainClock += dt;
@@ -545,7 +582,10 @@ class GrainientBgElement extends HTMLElement {
         trail.length > 0 ||
         spins.length > 0;
       if (busy) raf = requestAnimationFrame(frame);
-      else last = 0;
+      else {
+        last = 0;
+        lastDraw = 0;
+      }
     };
 
     const wake = () => {
@@ -569,6 +609,7 @@ class GrainientBgElement extends HTMLElement {
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target, 0);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       }
+      measureOcclude();
       draw();
       wake();
     };
@@ -649,6 +690,10 @@ class GrainientBgElement extends HTMLElement {
     this._wake = wake;
     this._redraw = draw;
     resize();
+    requestAnimationFrame(() => {
+      measureOcclude();
+      draw();
+    });
 
     this._cleanup = () => {
       cancelAnimationFrame(raf);
