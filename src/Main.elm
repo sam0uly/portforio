@@ -12,6 +12,7 @@ import Html.Attributes as Attr
 import Html.Events as Events
 import Html.Lazy as Lazy
 import Json.Decode as Decode exposing (Decoder)
+import OgImages
 import Process
 import Svg exposing (rect, svg)
 import Svg.Attributes as SvgAttr
@@ -57,6 +58,7 @@ type Route
     = Home
     | BlogIndex
     | BlogPost String
+    | OgImagesRoute
 
 
 type alias Flags =
@@ -95,6 +97,7 @@ type alias Model =
     , ditherFooter : DitherFooter.Model
     , footerVisible : Bool
     , blog : Blog.Model
+    , ogImages : OgImages.Model
     , copyState : CopyState
     , liveAnnouncement : String
     }
@@ -104,6 +107,7 @@ type Msg
     = TopDitherMsg DitherTop.Msg
     | FooterDitherMsg DitherFooter.Msg
     | BlogMsg Blog.Msg
+    | OgImagesMsg OgImages.Msg
     | AnimationTick Float
     | ToggleTheme
     | ToggleMotion
@@ -140,7 +144,10 @@ routeFromString raw =
                             s
                    )
     in
-    if cleaned == "blog" then
+    if cleaned == "og-images" then
+        OgImagesRoute
+
+    else if cleaned == "blog" then
         BlogIndex
 
     else if String.startsWith "blog/" cleaned then
@@ -169,6 +176,9 @@ routeToString route =
 
         BlogPost slug ->
             "/blog/" ++ slug
+
+        OgImagesRoute ->
+            "/og-images"
 
 
 emailAddress : String
@@ -300,6 +310,7 @@ init rawFlags =
       , ditherFooter = DitherFooter.init decodedFlags.prefersReducedMotion
       , footerVisible = True
       , blog = Blog.init decodedFlags.blogPosts
+      , ogImages = OgImages.init decodedFlags.blogPosts
       , copyState = CopyIdle
       , liveAnnouncement = ""
       }
@@ -381,6 +392,11 @@ update msg model =
 
         ResetHeadingCopy ->
             ( { model | blog = Blog.clearCopiedHeading model.blog }
+            , Cmd.none
+            )
+
+        OgImagesMsg subMsg ->
+            ( { model | ogImages = OgImages.update subMsg model.ogImages }
             , Cmd.none
             )
 
@@ -587,6 +603,9 @@ startNavigation shouldPush target model =
                     BlogPost _ ->
                         "Opened blog post."
 
+                    OgImagesRoute ->
+                        "Opened Open Graph gallery."
+
             pushCmd =
                 if shouldPush then
                     pushRoute (routeToString target)
@@ -685,6 +704,22 @@ viewBlogPostLazy theme motionPlaying currentYear blog slug =
     Blog.viewPost (makeBlogConfig theme motionPlaying currentYear) blog slug
 
 
+viewOgImagesLazy : Theme -> Bool -> String -> List Blog.Post -> OgImages.Model -> Html Msg
+viewOgImagesLazy theme motionPlaying currentYear posts ogModel =
+    OgImages.view
+        { toMsg = OgImagesMsg
+        , onBackHome = Navigate Home
+        , onOpenBlogIndex = Navigate BlogIndex
+        , onToggleTheme = ToggleTheme
+        , onToggleMotion = ToggleMotion
+        , theme = theme
+        , motionPlaying = motionPlaying
+        , currentYear = currentYear
+        , posts = posts
+        }
+        ogModel
+
+
 viewDesktopTocWingLazy : Bool -> Float -> Theme -> BayerMask.Model -> Blog.Model -> Maybe String -> Html Msg
 viewDesktopTocWingLazy wingMoving morphProgress theme bayerMask blog wingSlug =
     Blog.viewDesktopTocWing
@@ -751,6 +786,9 @@ view model =
 
                     Nothing ->
                         "Post not found | Samouly"
+
+            OgImagesRoute ->
+                "Open Graph Studio | Samouly"
     , body =
         [ div
             [ Attr.class "fixed inset-0 h-dvh bg-transparent text-[var(--page-fg)] flex flex-col items-center overflow-hidden px-3 sm:px-6 select-none" ]
@@ -814,6 +852,9 @@ view model =
 
                                 BlogPost slug ->
                                     Lazy.lazy5 viewBlogPostLazy model.theme model.motionPlaying model.flags.currentYear model.blog slug
+
+                                OgImagesRoute ->
+                                    Lazy.lazy5 viewOgImagesLazy model.theme model.motionPlaying model.flags.currentYear model.blog.posts model.ogImages
                             ]
                         , Lazy.lazy2 viewFooter model.theme model.ditherFooter
                         ]

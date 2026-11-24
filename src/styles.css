@@ -399,6 +399,67 @@
   image-rendering: crisp-edges;
 }
 
+.og-stage {
+  container-type: inline-size;
+  aspect-ratio: 1200 / 630;
+}
+
+.og-grainient {
+  background-color: #0c0a14;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='1.7' intercept='-0.35'/%3E%3CfeFuncG type='linear' slope='1.7' intercept='-0.35'/%3E%3CfeFuncB type='linear' slope='1.7' intercept='-0.35'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.28'/%3E%3C/svg%3E"),
+    radial-gradient(65% 85% at 14% 20%, rgba(43, 85, 179, 0.92), transparent 70%),
+    radial-gradient(60% 80% at 48% 12%, rgba(139, 117, 255, 0.88), transparent 68%),
+    radial-gradient(58% 82% at 86% 24%, rgba(255, 79, 191, 0.86), transparent 66%),
+    radial-gradient(62% 85% at 88% 88%, rgba(255, 152, 90, 0.92), transparent 68%),
+    linear-gradient(125deg, #0c0a14 0%, #2b55b3 28%, #8b75ff 54%, #ff4fbf 78%, #ff985a 100%);
+  background-size: 140px 140px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  background-blend-mode: overlay, screen, screen, screen, screen, normal;
+}
+
+:root.light .og-grainient {
+  background-color: #f5f4f0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='1.7' intercept='-0.35'/%3E%3CfeFuncG type='linear' slope='1.7' intercept='-0.35'/%3E%3CfeFuncB type='linear' slope='1.7' intercept='-0.35'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.22'/%3E%3C/svg%3E"),
+    radial-gradient(65% 85% at 14% 22%, rgba(255, 180, 135, 0.88), transparent 72%),
+    radial-gradient(60% 80% at 48% 15%, rgba(255, 130, 207, 0.82), transparent 70%),
+    radial-gradient(62% 85% at 86% 28%, rgba(170, 153, 255, 0.86), transparent 70%),
+    radial-gradient(62% 85% at 86% 88%, rgba(94, 130, 204, 0.78), transparent 72%),
+    linear-gradient(125deg, #f8efe9 0%, #ffb487 28%, #ff82cf 54%, #aa99ff 78%, #5e82cc 100%);
+}
+
+.og-squircle {
+  border-radius: 3.4cqw;
+  corner-shape: squircle;
+}
+
+.og-squircle-top {
+  border-top-left-radius: 4.2cqw;
+  border-top-right-radius: 4.2cqw;
+  corner-shape: squircle;
+}
+
+.og-squircle-sm {
+  border-radius: 2cqw;
+  corner-shape: squircle;
+}
+
+@supports not (corner-shape: squircle) {
+  .og-squircle {
+    border-radius: 2.4cqw;
+  }
+
+  .og-squircle-top {
+    border-top-left-radius: 3cqw;
+    border-top-right-radius: 3cqw;
+  }
+
+  .og-squircle-sm {
+    border-radius: 1.4cqw;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
