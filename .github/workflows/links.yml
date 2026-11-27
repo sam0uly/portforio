@@ -6,7 +6,8 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - 'src/Main.elm'
+      - 'src/elm/Main.elm'
+      - 'src/elm/Features/WorkSection.elm'
       - 'index.html'
       - 'README.md'
       - 'public/llms.txt'
@@ -36,7 +37,8 @@ jobs:
             --accept 200,204,206,429
             --exclude "^https://x\.com"
             --exclude "^mailto:"
-            src/Main.elm
+            src/elm/Main.elm
+            src/elm/Features/WorkSection.elm
             index.html
             README.md
             public/llms.txt

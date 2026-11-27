@@ -42,8 +42,8 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Typecheck Elm (optimized)
-        run: elm make src/Main.elm --optimize --output=/dev/null
+      - name: Typecheck Elm & TypeScript
+        run: bun run check
 
       - name: Build production bundle
         run: bun run build
