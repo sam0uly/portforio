@@ -364,7 +364,7 @@ class GrainientBgElement extends HTMLElement {
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, target);
       gl.uniform1i(comp.uniforms.uField, 0);
-      gl.uniform1f(comp.uniforms.uGrainSize, 0.85 * view.dpr);
+      gl.uniform1f(comp.uniforms.uGrainSize, view.w < 768 ? 1.0 : 0.85 * view.dpr);
       gl.uniform1f(comp.uniforms.uFrame, frameSeed);
       gl.uniform4fv(comp.uniforms.uOcclude, occlude);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -482,11 +482,13 @@ class GrainientBgElement extends HTMLElement {
     const resize = (): void => {
       view.w = Math.max(1, this.clientWidth || window.innerWidth);
       view.h = Math.max(1, this.clientHeight || window.innerHeight);
-      view.dpr = Math.min(window.devicePixelRatio || 1, 1.25);
+      const isMobile = view.w < 768;
+      view.dpr = Math.min(window.devicePixelRatio || 1, isMobile ? 2.0 : 1.25);
       canvas.width = Math.max(1, Math.round(view.w * view.dpr));
       canvas.height = Math.max(1, Math.round(view.h * view.dpr));
-      const fw = Math.max(1, Math.round(canvas.width / 3));
-      const fh = Math.max(1, Math.round(canvas.height / 3));
+      const fieldDiv = isMobile ? 4 : 3;
+      const fw = Math.max(1, Math.round(canvas.width / fieldDiv));
+      const fh = Math.max(1, Math.round(canvas.height / fieldDiv));
       if (fw !== fSize.w || fh !== fSize.h) {
         fSize.w = fw;
         fSize.h = fh;
