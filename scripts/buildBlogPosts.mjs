@@ -35,7 +35,7 @@ function getHighlighter() {
   return highlighterPromise;
 }
 
-async function highlightCode(code, rawLang) {
+export async function highlightCode(code, rawLang) {
   const normalized = String(rawLang || '').trim().toLowerCase();
   const lang = LANG_ALIASES[normalized] || normalized || 'text';
   if (lang === 'text') {
@@ -89,7 +89,7 @@ function unescapeMd(str) {
   return str.replace(/\\([\\`*_{}[\]()#+\-.!~|])/g, '$1');
 }
 
-function parseFrontmatter(raw) {
+export function parseFrontmatter(raw) {
   const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
   if (!match) return { meta: {}, body: raw };
 
@@ -255,7 +255,7 @@ function isTableSeparator(line) {
   return /^\|?(\s*:?-+:?\s*\|)+\s*:?-+:?\s*\|?$/.test(line.trim());
 }
 
-async function parseBlocks(lines, toc, usedIds) {
+export async function parseBlocks(lines, toc, usedIds) {
   const blocks = [];
   let i = 0;
 
