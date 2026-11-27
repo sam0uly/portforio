@@ -1,12 +1,12 @@
-module DitherFooter exposing (Model, Msg, init, isAnimating, tick, update, view)
+module Effects.DitherFooter exposing (Model, Msg, activeRippleCount, init, isAnimating, replayIntro, spawnRipple, tick, update, view, viewSized)
 
+import Data.Theme as Theme exposing (Theme)
 import Html exposing (Html)
 import Html.Attributes as Attr
 import Html.Events as Events
 import Json.Decode as Decode
 import Math.Vector2 as Vec2 exposing (Vec2, vec2)
 import Math.Vector3 as Vec3 exposing (Vec3, vec3)
-import Theme exposing (Theme)
 import WebGL exposing (Mesh, Shader)
 
 
@@ -64,6 +64,25 @@ isAnimating model =
         || model.presence
         > 0.005
         || not (List.isEmpty model.ripples)
+
+
+activeRippleCount : Model -> Int
+activeRippleCount model =
+    List.length model.ripples
+
+
+replayIntro : Model -> Model
+replayIntro model =
+    { model | intro = 0.0 }
+
+
+spawnRipple : Float -> Float -> Model -> Model
+spawnRipple nx ny model =
+    let
+        fresh =
+            { x = clamp 0 1 nx, y = clamp 0 1 ny, age = 0.0 }
+    in
+    { model | ripples = fresh :: List.take 3 model.ripples }
 
 
 update : Msg -> Model -> Model
@@ -209,6 +228,11 @@ rippleAt index list =
 
 view : Theme -> Model -> Html Msg
 view theme model =
+    viewSized "block w-full h-32 sm:h-auto aspect-[800/210] object-cover object-bottom pixel-crisp cursor-crosshair select-none touch-none" theme model
+
+
+viewSized : String -> Theme -> Model -> Html Msg
+viewSized canvasClass theme model =
     let
         ( mx, my ) =
             model.smoothMouse
@@ -219,7 +243,7 @@ view theme model =
         , Attr.height 105
         , Attr.attribute "role" "img"
         , Attr.attribute "aria-label" "Interactive colorful Bayer-dithered generative wave artwork"
-        , Attr.class "block w-full h-32 sm:h-auto aspect-[800/210] object-cover object-bottom pixel-crisp cursor-crosshair select-none touch-none"
+        , Attr.class canvasClass
         , Events.on "pointermove" (pointerDecoder PointerMove)
         , Events.on "pointerleave" (Decode.succeed PointerLeave)
         , Events.on "pointerup" touchEndDecoder

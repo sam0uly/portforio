@@ -1,4 +1,4 @@
-module Theme exposing (Theme(..), isLightFloat, toggle)
+module Data.Theme exposing (Theme(..), isLightFloat, toggle)
 
 
 type Theme

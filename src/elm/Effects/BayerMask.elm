@@ -1,4 +1,4 @@
-module BayerMask exposing
+module Effects.BayerMask exposing
     ( Model
     , TickEvent(..)
     , init
@@ -13,10 +13,10 @@ module BayerMask exposing
     , viewOverlay
     )
 
+import Data.Theme as Theme exposing (Theme(..))
 import Html exposing (Attribute, Html)
 import Html.Attributes as Attr
 import Math.Vector2 as Vec2 exposing (Vec2, vec2)
-import Theme exposing (Theme(..))
 import WebGL exposing (Mesh, Shader)
 
 

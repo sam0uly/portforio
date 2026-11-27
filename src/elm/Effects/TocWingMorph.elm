@@ -1,8 +1,10 @@
-module TocWingMorph exposing
+module Effects.TocWingMorph exposing
     ( Model
     , init
     , isAnimating
     , progress
+    , rightWingClipPath
+    , rightWingPath
     , setOpen
     , tick
     , wingClipPath
@@ -29,17 +31,17 @@ openDamping =
 
 closeStiffness : Float
 closeStiffness =
-    360
+    440
 
 
 closeDamping : Float
 closeDamping =
-    38
+    42
 
 
 settleThreshold : Float
 settleThreshold =
-    0.0008
+    0.0025
 
 
 wingWidth : Float
@@ -291,11 +293,8 @@ wingPath rawProgress =
             w =
                 wingWidth * e
 
-            minH =
-                8.0
-
             h =
-                minH + (wingHeight - minH) * e
+                wingHeight * e
 
             cy =
                 filletMax + wingHeight / 2.0
@@ -316,7 +315,7 @@ wingPath rawProgress =
                 min filletMax (w * 0.5)
 
             fy =
-                min filletMax (max 4.0 (w * 1.4))
+                min filletMax (w * 1.4)
 
             rx =
                 min radiusMax (max 0.0 (w - fx))
@@ -351,6 +350,134 @@ wingPath rawProgress =
                     ++ squircleCorner (leftX + rx) (topY + ry) rx ry 3
                     ++ topJoin
                     ++ [ "L " ++ pt (seamX + 1) (topY - fy)
+                       , "Z"
+                       ]
+        in
+        String.join " " segments
+
+
+rightWingWidth : Float
+rightWingWidth =
+    264
+
+
+rightWingHeight : Float
+rightWingHeight =
+    440
+
+
+rightWingClipPath : Float -> Maybe String
+rightWingClipPath rawProgress =
+    let
+        e =
+            clamp 0.0 1.08 rawProgress
+    in
+    if e >= 0.98 then
+        Nothing
+
+    else
+        let
+            w =
+                rightWingWidth * e
+
+            h =
+                8.0 + (rightWingHeight - 8.0) * e
+
+            rightInset =
+                max 0.0 (rightWingWidth - w)
+
+            vertInset =
+                max 0.0 ((rightWingHeight - h) / 2.0)
+
+            r =
+                min radiusMax (min (w * 0.5) (h * 0.45))
+        in
+        Just
+            ("inset("
+                ++ fmt vertInset
+                ++ "px "
+                ++ fmt rightInset
+                ++ "px "
+                ++ fmt vertInset
+                ++ "px 0px round 0px "
+                ++ fmt r
+                ++ "px "
+                ++ fmt r
+                ++ "px 0px)"
+            )
+
+
+rightWingPath : Float -> String
+rightWingPath rawProgress =
+    let
+        e =
+            clamp 0.0 1.08 rawProgress
+    in
+    if e < 0.002 then
+        ""
+
+    else
+        let
+            w =
+                rightWingWidth * e
+
+            h =
+                rightWingHeight * e
+
+            cy =
+                filletMax + rightWingHeight / 2.0
+
+            topY =
+                cy - h / 2.0
+
+            botY =
+                cy + h / 2.0
+
+            seamX =
+                0.0
+
+            rightX =
+                seamX + w
+
+            fx =
+                min filletMax (w * 0.5)
+
+            fy =
+                min filletMax (w * 1.4)
+
+            rx =
+                min radiusMax (max 0.0 (w - fx))
+
+            ry =
+                min radiusMax (h * 0.5)
+
+            topJoin =
+                if fx > 0.15 && fy > 0.15 then
+                    [ concaveFillet seamX (topY - fy) seamX topY (seamX + fx) topY ]
+
+                else
+                    [ "L " ++ pt seamX topY ]
+
+            botJoin =
+                if fx > 0.15 && fy > 0.15 then
+                    [ "L " ++ pt (seamX + fx) botY
+                    , concaveFillet (seamX + fx) botY seamX botY seamX (botY + fy)
+                    ]
+
+                else
+                    [ "L " ++ pt seamX botY ]
+
+            segments =
+                [ "M " ++ pt (seamX - 1) (topY - fy)
+                , "L " ++ pt seamX (topY - fy)
+                ]
+                    ++ topJoin
+                    ++ [ "L " ++ pt (rightX - rx) topY ]
+                    ++ squircleCorner (rightX - rx) (topY + ry) rx ry 0
+                    ++ [ "L " ++ pt rightX (botY - ry) ]
+                    ++ squircleCorner (rightX - rx) (botY - ry) rx ry 1
+                    ++ botJoin
+                    ++ [ "L " ++ pt (seamX - 1) (botY + fy)
                        , "Z"
                        ]
         in

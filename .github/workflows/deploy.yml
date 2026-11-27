@@ -3,6 +3,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: '0 6 * * *'
   workflow_dispatch:
 
 permissions:
@@ -43,8 +45,69 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Typecheck Elm
-        run: elm make src/Main.elm --optimize --output=/dev/null
+      - name: Typecheck Elm and TypeScript
+        run: bun run check
+
+      - name: Refresh GitHub stats
+        env:
+          GH_TOKEN: ${{ secrets.GH_STATS_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          OVERVIEW=$(gh api graphql -f query='
+            query {
+              user(login: "sam0uly") {
+                organizations(first: 20) { nodes { login } }
+                contributionsCollection {
+                  totalCommitContributions
+                  restrictedContributionsCount
+                  contributionCalendar {
+                    totalContributions
+                    weeks { contributionDays { date contributionCount } }
+                  }
+                }
+                pullRequests(first: 60, orderBy: {field: CREATED_AT, direction: DESC}, states: [OPEN, MERGED, CLOSED]) {
+                  totalCount
+                  nodes {
+                    number title url state createdAt mergedAt additions deletions
+                    repository { nameWithOwner isPrivate }
+                  }
+                }
+              }
+            }')
+          USER_STARS=$(gh api graphql --paginate -f query='
+            query($endCursor: String) {
+              user(login: "sam0uly") {
+                repositories(first: 100, after: $endCursor, ownerAffiliations: OWNER, isFork: false) {
+                  nodes { nameWithOwner stargazerCount }
+                  pageInfo { hasNextPage endCursor }
+                }
+              }
+            }' --jq '.data.user.repositories.nodes[]')
+          ORG_STARS=""
+          for ORG in $(echo "$OVERVIEW" | jq -r '.data.user.organizations.nodes[].login'); do
+            ORG_STARS+=$'\n'$(gh api graphql --paginate -f login="$ORG" -f query='
+              query($login: String!, $endCursor: String) {
+                organization(login: $login) {
+                  repositories(first: 100, after: $endCursor, isFork: false) {
+                    nodes { nameWithOwner stargazerCount }
+                    pageInfo { hasNextPage endCursor }
+                  }
+                }
+              }' --jq '.data.organization.repositories.nodes[]')
+          done
+          TOTAL_STARS=$(printf '%s\n%s\n' "$USER_STARS" "$ORG_STARS" | jq -s 'unique_by(.nameWithOwner) | map(.stargazerCount) | add // 0')
+          echo "$OVERVIEW" | jq --argjson stars "$TOTAL_STARS" --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{
+            username: "sam0uly",
+            profileUrl: "https://github.com/sam0uly",
+            orgs: [.data.user.organizations.nodes[].login],
+            totalContributions: .data.user.contributionsCollection.contributionCalendar.totalContributions,
+            commits: (.data.user.contributionsCollection.totalCommitContributions + .data.user.contributionsCollection.restrictedContributionsCount),
+            prs: .data.user.pullRequests.totalCount,
+            stars: $stars,
+            fetchedAt: $now,
+            weeks: [.data.user.contributionsCollection.contributionCalendar.weeks[] | [.contributionDays[] | {date: .date, count: .contributionCount}]],
+            recentPrs: ([.data.user.pullRequests.nodes[] | select(.repository.isPrivate == false) | {number, title, url, state, repo: .repository.nameWithOwner, date: ((.mergedAt // .createdAt)[0:10]), additions, deletions}] | .[0:20])
+          }' > public/github-stats.json.tmp && mv public/github-stats.json.tmp public/github-stats.json || true
 
       - name: Build site
         run: bun run build

@@ -1,4 +1,4 @@
-module Blog exposing
+module Features.Blog exposing
     ( Block(..)
     , Inline(..)
     , Model
@@ -7,26 +7,32 @@ module Blog exposing
     , TocItem
     , clearCopiedCode
     , clearCopiedHeading
+    , decodeBlock
     , decodePosts
+    , ensureLoaded
     , findBySlug
     , init
     , setActiveHeading
     , update
     , viewDesktopTocWing
     , viewIndex
+    , viewMarkdownBlocks
     , viewMobileTocOverlay
     , viewPost
     )
 
+import Data.HeadingId as HeadingId exposing (HeadingId)
+import Data.Slug as Slug exposing (Slug)
+import Data.Theme as Theme exposing (Theme(..))
+import Effects.TocWingMorph as TocWingMorph
 import Html exposing (Html, a, article, blockquote, button, code, del, div, em, h1, h2, h3, h4, h5, h6, input, li, nav, ol, p, pre, section, span, strong, table, tbody, td, text, th, thead, tr, ul)
 import Html.Attributes as Attr
 import Html.Events as Events
 import Html.Lazy as Lazy
+import Http
 import Json.Decode as Decode exposing (Decoder)
 import Svg exposing (path, rect, svg)
 import Svg.Attributes as SvgAttr
-import Theme exposing (Theme(..))
-import TocWingMorph
 
 
 type alias CodeToken =
@@ -53,7 +59,7 @@ type alias CardItem =
 
 
 type Block
-    = Heading Int String (List Inline)
+    = Heading Int HeadingId (List Inline)
     | Paragraph (List Inline)
     | Blockquote (List Inline)
     | Callout String (List Block)
@@ -65,14 +71,14 @@ type Block
 
 
 type alias TocItem =
-    { id : String
+    { id : HeadingId
     , text : String
     , level : Int
     }
 
 
 type alias Post =
-    { slug : String
+    { slug : Slug
     , title : String
     , summary : String
     , dateIso : String
@@ -88,10 +94,10 @@ type alias Model =
     { posts : List Post
     , query : String
     , activeTag : Maybe String
-    , activeHeading : String
+    , activeHeading : Maybe HeadingId
     , tocOpen : Bool
     , copiedCode : Maybe String
-    , copiedHeading : Maybe String
+    , copiedHeading : Maybe HeadingId
     }
 
 
@@ -100,9 +106,27 @@ type Msg
     | SelectTag (Maybe String)
     | ResetFilters
     | ToggleToc
-    | JumpToHeading String
+    | JumpToHeading HeadingId
     | CopyCode String
-    | CopyHeadingLink String
+    | CopyHeadingLink HeadingId
+    | GotPostBlocks Slug (Result Http.Error (List Block))
+
+
+ensureLoaded : Slug -> Model -> Cmd Msg
+ensureLoaded slug model =
+    case findBySlug slug model of
+        Just post ->
+            if List.isEmpty post.blocks then
+                Http.get
+                    { url = "/blog-data/" ++ Slug.toString slug ++ ".json"
+                    , expect = Http.expectJson (GotPostBlocks slug) (Decode.list decodeBlock)
+                    }
+
+            else
+                Cmd.none
+
+        Nothing ->
+            Cmd.none
 
 
 init : List Post -> Model
@@ -110,20 +134,20 @@ init posts =
     { posts = posts
     , query = ""
     , activeTag = Nothing
-    , activeHeading = ""
+    , activeHeading = Nothing
     , tocOpen = False
     , copiedCode = Nothing
     , copiedHeading = Nothing
     }
 
 
-setActiveHeading : String -> Model -> Model
+setActiveHeading : HeadingId -> Model -> Model
 setActiveHeading headingId model =
-    if model.activeHeading == headingId then
+    if model.activeHeading == Just headingId then
         model
 
     else
-        { model | activeHeading = headingId }
+        { model | activeHeading = Just headingId }
 
 
 clearCopiedCode : Model -> Model
@@ -136,16 +160,16 @@ clearCopiedHeading model =
     { model | copiedHeading = Nothing }
 
 
-findBySlug : String -> Model -> Maybe Post
+findBySlug : Slug -> Model -> Maybe Post
 findBySlug slug model =
     List.filter (\post -> post.slug == slug) model.posts
         |> List.head
 
 
 type alias UpdateEffect =
-    { scrollTo : Maybe String
+    { scrollTo : Maybe HeadingId
     , copyText : Maybe String
-    , copyHeading : Maybe String
+    , copyHeading : Maybe HeadingId
     }
 
 
@@ -179,7 +203,7 @@ update msg model =
             ( { model | tocOpen = not model.tocOpen }, noEffect )
 
         JumpToHeading headingId ->
-            ( { model | activeHeading = headingId, tocOpen = False }
+            ( { model | activeHeading = Just headingId, tocOpen = False }
             , { scrollTo = Just headingId, copyText = Nothing, copyHeading = Nothing }
             )
 
@@ -193,23 +217,97 @@ update msg model =
             , { scrollTo = Just headingId, copyText = Nothing, copyHeading = Just headingId }
             )
 
+        GotPostBlocks slug (Ok loadedBlocks) ->
+            let
+                nextPosts =
+                    List.map
+                        (\p ->
+                            if p.slug == slug then
+                                { p | blocks = loadedBlocks }
+
+                            else
+                                p
+                        )
+                        model.posts
+            in
+            ( { model | posts = nextPosts }, noEffect )
+
+        GotPostBlocks _ (Err _) ->
+            ( model, noEffect )
+
 
 decodePosts : Decoder (List Post)
 decodePosts =
     Decode.list decodePost
 
 
+formatDateIso : String -> String
+formatDateIso iso =
+    case String.split "-" iso of
+        [ yearStr, monthStr, dayStr ] ->
+            let
+                monthName =
+                    case String.toInt monthStr of
+                        Just 1 ->
+                            "Jan"
+
+                        Just 2 ->
+                            "Feb"
+
+                        Just 3 ->
+                            "Mar"
+
+                        Just 4 ->
+                            "Apr"
+
+                        Just 5 ->
+                            "May"
+
+                        Just 6 ->
+                            "Jun"
+
+                        Just 7 ->
+                            "Jul"
+
+                        Just 8 ->
+                            "Aug"
+
+                        Just 9 ->
+                            "Sep"
+
+                        Just 10 ->
+                            "Oct"
+
+                        Just 11 ->
+                            "Nov"
+
+                        Just 12 ->
+                            "Dec"
+
+                        _ ->
+                            monthStr
+
+                dayNum =
+                    String.toInt dayStr
+                        |> Maybe.map String.fromInt
+                        |> Maybe.withDefault dayStr
+            in
+            monthName ++ " " ++ dayNum ++ ", " ++ yearStr
+
+        _ ->
+            iso
+
+
 decodePost : Decoder Post
 decodePost =
-    Decode.map8
-        (\slug title summary dateIso dateLabel readTime tags toc ->
-            Post slug title summary dateIso dateLabel readTime tags toc
+    Decode.map7
+        (\slug title summary dateIso readTime tags toc ->
+            Post slug title summary dateIso (formatDateIso dateIso) readTime tags toc
         )
-        (Decode.field "slug" Decode.string)
+        (Decode.field "slug" Slug.decoder)
         (Decode.field "title" Decode.string)
         (Decode.field "summary" Decode.string)
         (Decode.field "dateIso" Decode.string)
-        (Decode.field "dateLabel" Decode.string)
         (Decode.field "readTime" Decode.string)
         (Decode.field "tags" (Decode.list Decode.string))
         (Decode.field "toc" (Decode.list decodeTocItem))
@@ -223,7 +321,7 @@ decodePost =
 decodeTocItem : Decoder TocItem
 decodeTocItem =
     Decode.map3 TocItem
-        (Decode.field "id" Decode.string)
+        (Decode.field "id" HeadingId.decoder)
         (Decode.field "text" Decode.string)
         (Decode.field "level" Decode.int)
 
@@ -283,7 +381,7 @@ decodeBlock =
                     "heading" ->
                         Decode.map3 Heading
                             (Decode.field "level" Decode.int)
-                            (Decode.field "id" Decode.string)
+                            (Decode.field "id" HeadingId.decoder)
                             (Decode.field "inlines" (Decode.list decodeInline))
 
                     "blockquote" ->
@@ -379,7 +477,7 @@ type alias ViewConfig msg =
     { toMsg : Msg -> msg
     , onBackHome : msg
     , onOpenBlogIndex : msg
-    , onOpenPost : String -> msg
+    , onOpenPost : Slug -> msg
     , onToggleTheme : msg
     , onToggleMotion : msg
     , theme : Theme
@@ -453,7 +551,7 @@ viewIndexHeader config =
                     [ Attr.href "/"
                     , onInternalLinkClick config.onBackHome
                     , Attr.class
-                        ("group inline-flex items-center gap-1.5 min-h-11 sm:min-h-8 shrink-0 font-mono text-xs text-[var(--page-muted)] transition-colors duration-150 hover:text-[var(--page-fg)] rounded-xs "
+                        ("group inline-flex items-center gap-x-1.5 px-3 py-1.5 shrink-0 btn-squircle bg-[#8b75ff]/12 hover:bg-[#8b75ff]/22 font-mono text-xs text-[var(--callout-note-bg)] light:text-[#443299] transition-colors duration-150 "
                             ++ focusRing
                         )
                     ]
@@ -649,7 +747,7 @@ viewPostRow config post =
     li [ Attr.class "min-w-0 py-4 first:pt-1 transition-opacity duration-150 group-hover/posts:opacity-45 hover:!opacity-100 focus-within:!opacity-100" ]
         [ article [ Attr.class "space-y-2" ]
             [ a
-                [ Attr.href ("/blog/" ++ post.slug)
+                [ Attr.href ("/blog/" ++ Slug.toString post.slug)
                 , onInternalLinkClick (config.onOpenPost post.slug)
                 , Attr.class ("group block space-y-1.5 rounded-xs " ++ focusRing)
                 ]
@@ -688,7 +786,7 @@ viewEmptyState config =
         ]
 
 
-viewPost : ViewConfig msg -> Model -> String -> Html msg
+viewPost : ViewConfig msg -> Model -> Slug -> Html msg
 viewPost config model slug =
     case findBySlug slug model of
         Nothing ->
@@ -719,13 +817,18 @@ viewPost config model slug =
             in
             div [ Attr.class "flex flex-col pointer-events-auto pt-10 xl:pt-0" ]
                 [ viewPostHeader config post
-                , Lazy.lazy5 viewArticleBody config.toMsg config.theme model.copiedCode model.copiedHeading post.blocks
+                , if List.isEmpty post.blocks then
+                    div [ Attr.class "mt-8 sm:mt-9 py-10 font-mono text-xs text-[var(--page-subtle)]" ]
+                        [ text "Loading article…" ]
+
+                  else
+                    Lazy.lazy5 viewArticleBody config.toMsg config.theme model.copiedCode model.copiedHeading post.blocks
                 , viewAdjacentNav config prevPost nextPost
                 , viewUtilityBar config "/blog" "All posts" config.onOpenBlogIndex
                 ]
 
 
-adjacentPosts : String -> List Post -> ( Maybe Post, Maybe Post )
+adjacentPosts : Slug -> List Post -> ( Maybe Post, Maybe Post )
 adjacentPosts slug postList =
     let
         go prev rest =
@@ -755,7 +858,7 @@ viewPostHeader config post =
                 [ Attr.href "/blog"
                 , onInternalLinkClick config.onOpenBlogIndex
                 , Attr.class
-                    ("group inline-flex items-center gap-1.5 min-h-11 sm:min-h-8 font-mono text-xs text-[var(--page-muted)] transition-colors duration-150 hover:text-[var(--page-fg)] rounded-xs "
+                    ("group inline-flex items-center gap-x-1.5 px-3 py-1.5 btn-squircle bg-[#8b75ff]/12 hover:bg-[#8b75ff]/22 font-mono text-xs text-[var(--callout-note-bg)] light:text-[#443299] transition-colors duration-150 "
                         ++ focusRing
                     )
                 ]
@@ -785,7 +888,7 @@ viewPostHeader config post =
         ]
 
 
-viewDesktopTocWing : ViewConfig msg -> Float -> List (Html.Attribute msg) -> Html msg -> Model -> Maybe String -> Html msg
+viewDesktopTocWing : ViewConfig msg -> Float -> List (Html.Attribute msg) -> Html msg -> Model -> Maybe Slug -> Html msg
 viewDesktopTocWing config morphProgress tintStyle overlayHtml model maybeSlug =
     let
         maybePost =
@@ -854,6 +957,7 @@ viewDesktopTocWing config morphProgress tintStyle overlayHtml model maybeSlug =
             [ svg
                 [ SvgAttr.viewBox "0 0 216 432"
                 , SvgAttr.class "pointer-events-none select-none absolute left-0 -top-6 w-[216px] h-[432px] overflow-visible z-0 [filter:drop-shadow(-8px_10px_20px_var(--wing-shadow-color))]"
+                , Attr.style "opacity" (String.fromFloat (clamp 0.0 1.0 (e / 0.14)))
                 , Attr.attribute "aria-hidden" "true"
                 , Attr.attribute "focusable" "false"
                 ]
@@ -878,11 +982,12 @@ viewDesktopTocWing config morphProgress tintStyle overlayHtml model maybeSlug =
                     Just post ->
                         let
                             activeId =
-                                if String.isEmpty model.activeHeading then
-                                    post.toc |> List.head |> Maybe.map .id |> Maybe.withDefault ""
+                                case model.activeHeading of
+                                    Just hid ->
+                                        Just hid
 
-                                else
-                                    model.activeHeading
+                                    Nothing ->
+                                        post.toc |> List.head |> Maybe.map .id
 
                             total =
                                 List.length post.toc
@@ -890,7 +995,7 @@ viewDesktopTocWing config morphProgress tintStyle overlayHtml model maybeSlug =
                             activeIdx =
                                 post.toc
                                     |> List.indexedMap Tuple.pair
-                                    |> List.filter (\( _, item ) -> item.id == activeId)
+                                    |> List.filter (\( _, item ) -> Just item.id == activeId)
                                     |> List.head
                                     |> Maybe.map (Tuple.first >> (+) 1)
                                     |> Maybe.withDefault 1
@@ -918,7 +1023,7 @@ viewDesktopTocWing config morphProgress tintStyle overlayHtml model maybeSlug =
                                     [ Attr.id "desktop-toc-nav"
                                     , Attr.class "relative z-0 h-full overflow-y-hidden py-9 space-y-0.5 pr-1"
                                     ]
-                                    (List.map (viewWingTocItem config activeId) post.toc)
+                                    (List.map (viewWingTocItem config "dtoc" activeId) post.toc)
                                 , div
                                     ([ Attr.class "pointer-events-none select-none absolute inset-x-0 top-0 h-9 z-20 pblur" ]
                                         ++ tintStyle
@@ -940,11 +1045,14 @@ viewDesktopTocWing config morphProgress tintStyle overlayHtml model maybeSlug =
             ]
 
 
-viewWingTocItem : ViewConfig msg -> String -> TocItem -> Html msg
-viewWingTocItem config activeId item =
+viewWingTocItem : ViewConfig msg -> String -> Maybe HeadingId -> TocItem -> Html msg
+viewWingTocItem config idPrefix activeId item =
     let
         isActive =
-            item.id == activeId
+            Just item.id == activeId
+
+        idStr =
+            HeadingId.toString item.id
 
         isSub =
             item.level >= 3
@@ -964,7 +1072,8 @@ viewWingTocItem config activeId item =
     in
     button
         [ Attr.type_ "button"
-        , Attr.attribute "data-toc-id" item.id
+        , Attr.id (idPrefix ++ "-" ++ idStr)
+        , Attr.attribute "data-toc-id" idStr
         , Events.onClick (config.toMsg (JumpToHeading item.id))
         , Attr.class
             ("group/toc flex items-start gap-2 w-full text-left py-1 leading-snug transition-colors duration-150 rounded-xs "
@@ -985,7 +1094,7 @@ viewWingTocItem config activeId item =
         ]
 
 
-viewMobileTocOverlay : ViewConfig msg -> List (Html.Attribute msg) -> Model -> String -> Html msg
+viewMobileTocOverlay : ViewConfig msg -> List (Html.Attribute msg) -> Model -> Slug -> Html msg
 viewMobileTocOverlay config tintStyle model slug =
     case findBySlug slug model of
         Nothing ->
@@ -998,11 +1107,12 @@ viewMobileTocOverlay config tintStyle model slug =
             else
                 let
                     activeId =
-                        if String.isEmpty model.activeHeading then
-                            post.toc |> List.head |> Maybe.map .id |> Maybe.withDefault ""
+                        case model.activeHeading of
+                            Just hid ->
+                                Just hid
 
-                        else
-                            model.activeHeading
+                            Nothing ->
+                                post.toc |> List.head |> Maybe.map .id
 
                     total =
                         List.length post.toc
@@ -1012,20 +1122,22 @@ viewMobileTocOverlay config tintStyle model slug =
 
                     activeEntry =
                         indexed
-                            |> List.filter (\( _, item ) -> item.id == activeId)
+                            |> List.filter (\( _, item ) -> Just item.id == activeId)
                             |> List.head
+                            |> Maybe.map (\( i, item ) -> ( i + 1, item.text ))
                             |> Maybe.withDefault
-                                ( 0
+                                ( 1
                                 , post.toc
                                     |> List.head
-                                    |> Maybe.withDefault { id = "", text = "Contents", level = 2 }
+                                    |> Maybe.map .text
+                                    |> Maybe.withDefault "Contents"
                                 )
 
                     activeIndex =
-                        Tuple.first activeEntry + 1
+                        Tuple.first activeEntry
 
                     activeTitle =
-                        (Tuple.second activeEntry).text
+                        Tuple.second activeEntry
                 in
                 div
                     [ Attr.class
@@ -1098,7 +1210,7 @@ viewMobileTocOverlay config tintStyle model slug =
                                 , Attr.class "max-h-[30dvh] overflow-y-auto scroll-clean py-2 pb-4 toc-nav-fade"
                                 ]
                                 [ div [ Attr.class "grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-0.5" ]
-                                    (List.map (viewWingTocItem config activeId) post.toc)
+                                    (List.map (viewWingTocItem config "mtoc" activeId) post.toc)
                                 ]
                             ]
 
@@ -1107,96 +1219,137 @@ viewMobileTocOverlay config tintStyle model slug =
                     ]
 
 
-viewArticleBody : (Msg -> msg) -> Theme -> Maybe String -> Maybe String -> List Block -> Html msg
+type alias BlockConfig msg =
+    { onCopyCode : String -> msg
+    , onCopyHeading : Maybe (HeadingId -> msg)
+    , theme : Theme
+    , copiedCode : Maybe String
+    , copiedHeading : Maybe HeadingId
+    }
+
+
+viewMarkdownBlocks : (String -> msg) -> Theme -> Maybe String -> List Block -> Html msg
+viewMarkdownBlocks onCopyCode theme copiedCode blocks =
+    let
+        cfg =
+            { onCopyCode = onCopyCode
+            , onCopyHeading = Nothing
+            , theme = theme
+            , copiedCode = copiedCode
+            , copiedHeading = Nothing
+            }
+    in
+    div [ Attr.class "space-y-3 text-[14.5px] leading-relaxed text-[var(--page-muted)] text-pretty" ]
+        (List.map (viewBlock cfg) blocks)
+
+
+viewArticleBody : (Msg -> msg) -> Theme -> Maybe String -> Maybe HeadingId -> List Block -> Html msg
 viewArticleBody toMsg theme copiedCode copiedHeading blocks =
+    let
+        cfg =
+            { onCopyCode = \snippet -> toMsg (CopyCode snippet)
+            , onCopyHeading = Just (\id -> toMsg (CopyHeadingLink id))
+            , theme = theme
+            , copiedCode = copiedCode
+            , copiedHeading = copiedHeading
+            }
+    in
     article
         [ Attr.id "article-body"
         , Attr.class "mt-8 sm:mt-9 min-w-0 space-y-4 text-[14.5px] sm:text-[15px] leading-[1.72] text-[var(--page-muted)]"
         ]
-        (List.map (viewBlock toMsg theme copiedCode copiedHeading) blocks)
+        (List.map (viewBlock cfg) blocks)
 
 
-viewHeadingAnchor : (Msg -> msg) -> Maybe String -> String -> List Inline -> Html msg
-viewHeadingAnchor toMsg copiedHeading id inlines =
-    let
-        isCopied =
-            copiedHeading == Just id
-    in
-    a
-        [ Attr.href ("#" ++ id)
-        , onInternalLinkClick (toMsg (CopyHeadingLink id))
-        , Attr.title
-            (if isCopied then
-                "Link copied"
+viewHeadingAnchor : BlockConfig msg -> HeadingId -> List Inline -> Html msg
+viewHeadingAnchor cfg id inlines =
+    case cfg.onCopyHeading of
+        Nothing ->
+            span [] (List.map viewInline inlines)
 
-             else
-                "Copy link to section"
-            )
-        , Attr.class ("group/heading inline-flex items-baseline gap-2 rounded-xs transition-colors duration-150 " ++ focusRing)
-        ]
-        [ span [] (List.map viewInline inlines)
-        , span
-            [ Attr.attribute "aria-hidden" "true"
-            , Attr.class
-                ("shrink-0 font-mono text-[0.72em] font-normal select-none transition-opacity duration-150 "
-                    ++ (if isCopied then
-                            "text-[var(--page-fg)] opacity-100"
+        Just onCopy ->
+            let
+                isCopied =
+                    cfg.copiedHeading == Just id
+            in
+            a
+                [ Attr.href ("#" ++ HeadingId.toString id)
+                , onInternalLinkClick (onCopy id)
+                , Attr.title
+                    (if isCopied then
+                        "Link copied"
 
-                        else
-                            "text-[var(--page-subtle)] opacity-0 group-hover/heading:opacity-80 group-focus-visible/heading:opacity-100"
-                       )
-                )
-            ]
-            [ text
-                (if isCopied then
-                    "copied"
+                     else
+                        "Copy link to section"
+                    )
+                , Attr.class ("group/heading inline-flex items-baseline gap-2 rounded-xs transition-colors duration-150 " ++ focusRing)
+                ]
+                [ span [] (List.map viewInline inlines)
+                , span
+                    [ Attr.attribute "aria-hidden" "true"
+                    , Attr.class
+                        ("shrink-0 font-mono text-[0.72em] font-normal select-none transition-opacity duration-150 "
+                            ++ (if isCopied then
+                                    "text-[var(--page-fg)] opacity-100"
 
-                 else
-                    "#"
-                )
-            ]
-        ]
+                                else
+                                    "text-[var(--page-subtle)] opacity-0 group-hover/heading:opacity-80 group-focus-visible/heading:opacity-100"
+                               )
+                        )
+                    ]
+                    [ text
+                        (if isCopied then
+                            "copied"
+
+                         else
+                            "#"
+                        )
+                    ]
+                ]
 
 
-viewBlock : (Msg -> msg) -> Theme -> Maybe String -> Maybe String -> Block -> Html msg
-viewBlock toMsg theme copiedCode copiedHeading block =
+viewBlock : BlockConfig msg -> Block -> Html msg
+viewBlock cfg block =
     case block of
         Heading level id inlines ->
             let
+                idStr =
+                    HeadingId.toString id
+
                 headingContent =
-                    [ viewHeadingAnchor toMsg copiedHeading id inlines ]
+                    [ viewHeadingAnchor cfg id inlines ]
             in
             if level <= 2 then
                 h2
-                    [ Attr.id id
+                    [ Attr.id idStr
                     , Attr.class "scroll-mt-8 pt-6 first:pt-0 font-display font-semibold text-lg sm:text-[1.3rem] leading-snug tracking-[-0.02em] text-[var(--page-fg)] text-balance"
                     ]
                     headingContent
 
             else if level == 3 then
                 h3
-                    [ Attr.id id
+                    [ Attr.id idStr
                     , Attr.class "scroll-mt-8 pt-4 font-display font-semibold text-[15.5px] sm:text-base leading-snug tracking-[-0.015em] text-[var(--page-fg)] text-balance"
                     ]
                     headingContent
 
             else if level == 4 then
                 h4
-                    [ Attr.id id
+                    [ Attr.id idStr
                     , Attr.class "scroll-mt-8 pt-3 font-display font-medium text-[14.5px] leading-snug text-[var(--page-fg)]/90 text-balance"
                     ]
                     headingContent
 
             else if level == 5 then
                 h5
-                    [ Attr.id id
+                    [ Attr.id idStr
                     , Attr.class "scroll-mt-8 pt-2.5 font-display font-medium text-[13.5px] leading-snug text-[var(--page-fg)]/85 text-balance"
                     ]
                     headingContent
 
             else
                 h6
-                    [ Attr.id id
+                    [ Attr.id idStr
                     , Attr.class "scroll-mt-8 pt-2 font-display font-medium text-[13px] leading-snug text-[var(--page-muted)] text-balance"
                     ]
                     headingContent
@@ -1222,7 +1375,7 @@ viewBlock toMsg theme copiedCode copiedHeading block =
                         _ ->
                             ( "Note", "var(--callout-note-bg)", "var(--callout-note-fg)" )
             in
-            div [ Attr.class "my-5 box-squircle bg-[var(--tab-bg)]/55 px-4 py-3.5 sm:px-5 sm:py-4 space-y-2" ]
+            div [ Attr.class "my-5 box-squircle bg-[var(--surface-2)] px-4 py-3.5 sm:px-5 sm:py-4 space-y-2" ]
                 (span [ Attr.class "inline-flex items-stretch h-[20px] font-mono text-[9.5px] font-medium uppercase tracking-[0.16em]" ]
                     [ span
                         [ Attr.class "inline-flex items-center pl-2 pr-1.5 leading-none"
@@ -1236,7 +1389,7 @@ viewBlock toMsg theme copiedCode copiedHeading block =
                         ]
                         [ ditherTailSvg ]
                     ]
-                    :: List.map (viewBlock toMsg theme copiedCode copiedHeading) blocks
+                    :: List.map (viewBlock cfg) blocks
                 )
 
         CardGroup cards ->
@@ -1249,12 +1402,12 @@ viewBlock toMsg theme copiedCode copiedHeading block =
                         "grid grid-cols-1"
             in
             div [ Attr.class ("my-5 " ++ gridCols) ]
-                (List.map (viewCard toMsg theme copiedCode copiedHeading) cards)
+                (List.map (viewCard cfg) cards)
 
         CodeBlock lang filename snippet tokenLines ->
             let
                 isCopied =
-                    copiedCode == Just snippet
+                    cfg.copiedCode == Just snippet
 
                 lineCount =
                     List.length tokenLines
@@ -1283,12 +1436,12 @@ viewBlock toMsg theme copiedCode copiedHeading block =
                                 [ text snippet ]
 
                              else
-                                List.indexedMap (viewCodeLine theme False) tokenLines
+                                List.indexedMap (viewCodeLine cfg.theme False) tokenLines
                             )
                         ]
                     , button
                         [ Attr.type_ "button"
-                        , Events.onClick (toMsg (CopyCode snippet))
+                        , Events.onClick (cfg.onCopyCode snippet)
                         , Attr.attribute "aria-label"
                             (if isCopied then
                                 "Copied"
@@ -1302,7 +1455,7 @@ viewBlock toMsg theme copiedCode copiedHeading block =
                                         "text-[var(--page-fg)] bg-[var(--tab-bg)]"
 
                                     else
-                                        "text-[var(--page-subtle)] hover:text-[var(--page-fg)] hover:bg-[var(--tab-bg)]/80"
+                                        "text-[var(--page-subtle)] hover:text-[var(--page-fg)] hover:bg-[var(--tab-bg)]"
                                    )
                                 ++ " "
                                 ++ focusRing
@@ -1329,7 +1482,7 @@ viewBlock toMsg theme copiedCode copiedHeading block =
                             ]
                         , button
                             [ Attr.type_ "button"
-                            , Events.onClick (toMsg (CopyCode snippet))
+                            , Events.onClick (cfg.onCopyCode snippet)
                             , Attr.attribute "aria-label"
                                 (if isCopied then
                                     "Copied"
@@ -1343,7 +1496,7 @@ viewBlock toMsg theme copiedCode copiedHeading block =
                                             "text-[var(--page-fg)] bg-[var(--tab-bg)]"
 
                                         else
-                                            "text-[var(--page-subtle)] hover:text-[var(--page-fg)] hover:bg-[var(--tab-bg)]/80"
+                                            "text-[var(--page-subtle)] hover:text-[var(--page-fg)] hover:bg-[var(--tab-bg)]"
                                        )
                                     ++ " "
                                     ++ focusRing
@@ -1357,7 +1510,7 @@ viewBlock toMsg theme copiedCode copiedHeading block =
                                 [ text snippet ]
 
                              else
-                                List.indexedMap (viewCodeLine theme showLineNums) tokenLines
+                                List.indexedMap (viewCodeLine cfg.theme showLineNums) tokenLines
                             )
                         ]
                     ]
@@ -1419,16 +1572,16 @@ viewBlock toMsg theme copiedCode copiedHeading block =
                 [ ditherDividerSvg ]
 
 
-viewCard : (Msg -> msg) -> Theme -> Maybe String -> Maybe String -> CardItem -> Html msg
-viewCard toMsg theme copiedCode copiedHeading card =
-    div [ Attr.class "p-4 box-squircle bg-[var(--tab-bg)]/55 space-y-2 text-[13.5px] leading-relaxed" ]
+viewCard : BlockConfig msg -> CardItem -> Html msg
+viewCard cfg card =
+    div [ Attr.class "p-4 box-squircle bg-[var(--surface-2)] space-y-2 text-[13.5px] leading-relaxed" ]
         (if String.isEmpty card.title then
-            List.map (viewBlock toMsg theme copiedCode copiedHeading) card.blocks
+            List.map (viewBlock cfg) card.blocks
 
          else
             p [ Attr.class "font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--page-fg)]" ]
                 [ text card.title ]
-                :: List.map (viewBlock toMsg theme copiedCode copiedHeading) card.blocks
+                :: List.map (viewBlock cfg) card.blocks
         )
 
 
@@ -1483,7 +1636,7 @@ viewAdjacentNav config prevPost nextPost =
                 [ case prevPost of
                     Just prev ->
                         a
-                            [ Attr.href ("/blog/" ++ prev.slug)
+                            [ Attr.href ("/blog/" ++ Slug.toString prev.slug)
                             , onInternalLinkClick (config.onOpenPost prev.slug)
                             , Attr.class ("group flex flex-col items-start gap-1 rounded-xs " ++ focusRing)
                             ]
@@ -1500,7 +1653,7 @@ viewAdjacentNav config prevPost nextPost =
                 , case nextPost of
                     Just next ->
                         a
-                            [ Attr.href ("/blog/" ++ next.slug)
+                            [ Attr.href ("/blog/" ++ Slug.toString next.slug)
                             , onInternalLinkClick (config.onOpenPost next.slug)
                             , Attr.class ("group flex flex-col items-start sm:items-end sm:text-right gap-1 rounded-xs " ++ focusRing)
                             ]

@@ -1,5 +1,6 @@
-module DitherTop exposing (Model, Msg, init, isAnimating, tick, update, view)
+module Effects.DitherTop exposing (Model, Msg, init, isAnimating, tick, update, view)
 
+import Data.Theme as Theme exposing (Theme)
 import Html exposing (Html)
 import Html.Attributes as Attr
 import Html.Events as Events
@@ -7,7 +8,6 @@ import Json.Decode as Decode
 import Math.Vector2 as Vec2 exposing (Vec2, vec2)
 import Math.Vector3 as Vec3 exposing (Vec3, vec3)
 import Task
-import Theme exposing (Theme)
 import WebGL exposing (Mesh, Shader)
 import WebGL.Texture as Texture exposing (Texture)
 

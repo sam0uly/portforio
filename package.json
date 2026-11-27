@@ -5,17 +5,22 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/generateOgImages.mjs",
+    "generate:og": "node scripts/generateOgImages.mjs",
     "preview": "vite preview",
-    "check:elm": "elm make src/Main.elm --output=/dev/null"
+    "check:elm": "elm make src/elm/Main.elm --optimize --output=/dev/null",
+    "check:ts": "tsc --noEmit",
+    "check": "bun run check:elm && bun run check:ts"
   },
   "devDependencies": {
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@tailwindcss/vite": "^4.3.5",
+    "@types/node": "^26.6.11",
     "shiki": "^4.6.0",
     "tailwindcss": "^4.3.5",
+    "typescript": "^7.0.2",
     "vite": "^8.3.8"
   }
 }
