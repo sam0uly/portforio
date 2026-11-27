@@ -935,10 +935,10 @@ viewCalendarSvg toMsg theme weeks model =
         , Events.onMouseLeave (toMsg LeaveGrid)
         ]
         [ viewHoverTooltip theme totalW totalH step pad topPad model.hovered model.lastHovered activeLevel
-        , div [ Attr.class "overflow-x-auto pb-1 -mx-1 px-1" ]
+        , div [ Attr.class "flex flex-row-reverse sm:block overflow-x-auto scroll-clean pb-1 -mx-1 px-1" ]
             [ svg
                 [ SvgAttr.viewBox ("0 0 " ++ fmtCoord totalW ++ " " ++ fmtCoord totalH)
-                , SvgAttr.class "block w-full min-w-[580px] sm:min-w-0 h-auto select-none overflow-visible"
+                , SvgAttr.class "block shrink-0 w-full min-w-[580px] sm:min-w-0 h-auto select-none overflow-visible"
                 , Attr.attribute "role" "img"
                 , Attr.attribute "aria-label" "GitHub contribution graph over the last 12 months"
                 ]
